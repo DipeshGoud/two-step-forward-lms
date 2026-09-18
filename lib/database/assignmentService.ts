@@ -9,6 +9,12 @@ export interface EnrichedAssignment extends DbCourseAssignment {
   schoolName: string;
 }
 
+interface AssignmentRow extends Record<string, unknown> {
+  course?: { title?: string; estimated_duration_minutes?: number; thumbnail_url?: string | null; rating?: number };
+  profile?: { full_name?: string; email?: string };
+  school?: { name?: string };
+}
+
 export async function getAssignments(orgId?: string): Promise<EnrichedAssignment[]> {
   try {
     const supabase = createAdminClient();
@@ -28,7 +34,7 @@ export async function getAssignments(orgId?: string): Promise<EnrichedAssignment
       return fallbackAssignments();
     }
 
-    return data.map((row: any) => ({
+    return data.map((row: AssignmentRow) => ({
       ...row,
       courseTitle: row.course?.title || 'Untitled Course',
       employeeName: row.profile?.full_name || 'Unknown Staff',
@@ -57,7 +63,7 @@ export async function getUserAssignments(userId: string): Promise<EnrichedAssign
       return fallbackAssignments().filter((a) => a.user_id === userId);
     }
 
-    return data.map((row: any) => ({
+    return data.map((row: AssignmentRow) => ({
       ...row,
       courseTitle: row.course?.title || 'Untitled Course',
       employeeName: row.profile?.full_name || 'Unknown Staff',

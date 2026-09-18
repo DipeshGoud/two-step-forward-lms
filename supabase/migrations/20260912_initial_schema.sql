@@ -24,7 +24,7 @@ create table if not exists public.profiles (
     email text not null,
     full_name text not null,
     avatar_url text,
-    role text not null default 'instructor' check (role in ('super_admin', 'org_admin', 'manager', 'instructor')),
+    role text not null default 'learner' check (role in ('super_admin', 'org_admin', 'manager', 'instructor', 'learner')),
     is_active boolean not null default true,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -36,6 +36,7 @@ create table if not exists public.schools (
     organization_id uuid not null references public.organizations(id) on delete cascade,
     name text not null,
     code text,
+    location text not null default '',
     description text,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -98,7 +99,7 @@ create table if not exists public.lessons (
     id uuid primary key default gen_random_uuid(),
     module_id uuid not null references public.course_modules(id) on delete cascade,
     title text not null,
-    content_type text not null check (content_type in ('video', 'pdf', 'text', 'quiz')),
+    content_type text not null check (content_type in ('video', 'pdf', 'image', 'text', 'reading', 'quiz')),
     content_body text,
     media_storage_path text,
     duration_minutes integer not null default 0,
@@ -319,7 +320,7 @@ create policy "Learners view assigned published courses; staff view all org cour
     using (
         organization_id = public.current_user_org_id()
         and (
-            public.current_user_role() in ('super_admin', 'org_admin', 'manager', 'instructor')
+            public.current_user_role() in ('super_admin', 'org_admin', 'manager')
             or (
                 is_published = true
                 and id in (select course_id from public.course_assignments where user_id = auth.uid())
@@ -365,7 +366,7 @@ create policy "Staff manage course modules"
         course_id in (
             select id from public.courses
             where organization_id = public.current_user_org_id()
-            and public.current_user_role() in ('super_admin', 'org_admin', 'instructor')
+            and public.current_user_role() in ('super_admin', 'org_admin', 'manager')
         )
     );
 
@@ -382,7 +383,7 @@ create policy "Staff manage lessons"
             select m.id from public.course_modules m
             join public.courses c on c.id = m.course_id
             where c.organization_id = public.current_user_org_id()
-            and public.current_user_role() in ('super_admin', 'org_admin', 'instructor')
+            and public.current_user_role() in ('super_admin', 'org_admin', 'manager')
         )
     );
 
@@ -530,7 +531,7 @@ begin
     default_org_id,
     new.email,
     coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
-    coalesce(new.raw_user_meta_data->>'role', 'instructor')
+    'learner'
   )
   on conflict (id) do nothing;
 
@@ -542,4 +543,3 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
-

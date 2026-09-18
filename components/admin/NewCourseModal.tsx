@@ -49,7 +49,7 @@ export default function NewCourseModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -64,7 +64,7 @@ export default function NewCourseModal({
 
     setIsSubmitting(true);
     try {
-      const created = createCourse({
+      const created = await createCourse({
         title: trimmedTitle,
         totalLessons: Math.max(0, lessonsCount),
         durationMinutes: Math.max(0, duration),

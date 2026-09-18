@@ -2,7 +2,7 @@
 // TwoStep Forward LMS — Database Entity Types
 // ============================================================================
 
-export type UserRole = 'super_admin' | 'org_admin' | 'manager' | 'instructor';
+export type UserRole = 'super_admin' | 'org_admin' | 'manager' | 'instructor' | 'learner';
 
 export interface DbOrganization {
   id: string;
@@ -31,6 +31,7 @@ export interface DbSchool {
   organization_id: string;
   name: string;
   code: string | null;
+  location: string;
   description: string | null;
   created_at: string;
   updated_at: string;

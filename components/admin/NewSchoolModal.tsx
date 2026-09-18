@@ -49,7 +49,7 @@ export default function NewSchoolModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -73,7 +73,7 @@ export default function NewSchoolModal({
 
     setIsSubmitting(true);
     try {
-      const created = createSchool({
+      const created = await createSchool({
         name: trimmedName,
         code: trimmedCode,
         location: trimmedLoc,

@@ -60,7 +60,7 @@ export default function AdminCoursesPage() {
       if (courseToDelete.modules) {
         for (const mod of courseToDelete.modules) {
           for (const les of mod.lessons) {
-            if (les.fileUrl) filesToPurge.push(les.fileUrl);
+            if (les.storagePath || les.fileUrl) filesToPurge.push(les.storagePath || les.fileUrl);
           }
         }
       }

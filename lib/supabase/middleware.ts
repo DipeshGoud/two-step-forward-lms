@@ -35,11 +35,6 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthRoute =
-    request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/forgot-password') ||
-    request.nextUrl.pathname.startsWith('/reset-password');
-
   const isProtectedRoute =
     request.nextUrl.pathname.startsWith('/learning') ||
     request.nextUrl.pathname.startsWith('/knowledge') ||
@@ -48,20 +43,12 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/admin') ||
     request.nextUrl.pathname.startsWith('/profile');
 
-  const isDev = process.env.NODE_ENV === 'development';
-
-  // If user is not authenticated and trying to access protected route, redirect to login in production
-  if (!user && isProtectedRoute && !isDev) {
+  // Route protection must not depend on the deployment environment. API
+  // handlers still perform their own authorization checks and return JSON.
+  if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('redirectTo', request.nextUrl.pathname);
-    return NextResponse.redirect(url);
-  }
-
-  // If user is authenticated and visits login, redirect to /learning
-  if (user && isAuthRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/learning';
     return NextResponse.redirect(url);
   }
 

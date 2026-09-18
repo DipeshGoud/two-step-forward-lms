@@ -8,6 +8,7 @@ import { NotificationDrawer } from './notification-drawer';
 import { UserDrawer } from './user-drawer';
 import { LMSNotification } from '@/types/lms';
 import { UserProfile } from '@/types/auth';
+import { isUserAdmin } from '@/lib/data/adminStore';
 import BrandLogo from '@/components/ui/BrandLogo';
 
 interface HeaderProps {
@@ -87,13 +88,15 @@ export function Header({ user, notifications = [] }: HeaderProps) {
               </button>
 
               {/* Admin Panel Link */}
-              <Link
-                href="/admin"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 border border-indigo-200/60 px-2.5 py-1.5 rounded-md transition-colors"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span>Admin</span>
-              </Link>
+              {isUserAdmin(user?.role) && (
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 border border-indigo-200/60 px-2.5 py-1.5 rounded-md transition-colors"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Admin</span>
+                </Link>
+              )}
 
               {/* User Profile Avatar */}
               <button

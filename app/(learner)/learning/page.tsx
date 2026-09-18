@@ -9,48 +9,39 @@ import {
   Search,
   X,
   BookOpen,
-  Users,
   ShieldCheck,
   Shield,
 } from 'lucide-react';
 import { MetricBanner } from '@/components/learner/metric-banner';
 import { CourseCard } from '@/components/learner/course-card';
 import { CourseListItem } from '@/components/learner/course-list-item';
-import { useAdminStore, DEFAULT_LEARNER_ID, AdminCourse, isUserAdmin } from '@/lib/data/adminStore';
+import { useAdminStore, AdminCourse, isUserAdmin } from '@/lib/data/adminStore';
 
 export default function LearningPage() {
-  const { store, setCurrentUserId } = useAdminStore();
+  const { store, isHydrated } = useAdminStore();
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'yet_to_start' | 'in_progress' | 'completed'>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'progress' | 'rating'>('recent');
 
-  const activeUserId = store.currentUserId || DEFAULT_LEARNER_ID;
+  const activeUserId = store.currentUserId;
 
   // Active learner details
-  const activeLearner = useMemo(() => {
-    return (
-      store.users.find((u) => u.id === activeUserId) ||
-      store.users[0] || {
-        id: 'usr-1',
-        name: 'Sarah Jenkins',
-        email: 'sarah.j@onestep.edu',
-        role: 'instructor' as const,
-        schools: ['Downtown Academy'],
-        status: 'active' as const,
-      }
-    );
-  }, [store.users, activeUserId]);
+  const activeLearner = useMemo(
+    () => store.users.find((u) => u.id === activeUserId) || store.users[0],
+    [store.users, activeUserId]
+  );
 
-  const isAdmin = isUserAdmin(activeLearner.role);
+  const isAdmin = isUserAdmin(activeLearner?.role);
 
   // Learner assignments strictly from dashboard
   const learnerAssignments = useMemo(() => {
     return store.assignments.filter(
       (a) =>
-        a.employeeId === activeLearner.id ||
-        a.employeeName.toLowerCase() === activeLearner.name.toLowerCase()
+        activeLearner &&
+        (a.employeeId === activeLearner.id ||
+          a.employeeName.toLowerCase() === activeLearner.name.toLowerCase())
     );
   }, [store.assignments, activeLearner]);
 
@@ -70,8 +61,8 @@ export default function LearningPage() {
       list = store.courses.map((course) => {
         const foundAssignment = store.assignments.find(
           (a) =>
-            (a.employeeId === activeLearner.id ||
-              a.employeeName.toLowerCase() === activeLearner.name.toLowerCase()) &&
+            (a.employeeId === activeLearner?.id ||
+              a.employeeName.toLowerCase() === activeLearner?.name.toLowerCase()) &&
             a.courseId === course.id
         );
 
@@ -150,6 +141,14 @@ export default function LearningPage() {
     ? assignedCourses.filter((c) => c.isCompleted || c.progressPercent === 100).length
     : learnerAssignments.filter((a) => a.status === 'completed' || a.progress === 100).length;
 
+  if (!isHydrated) {
+    return <div className="py-16 text-center text-sm text-slate-500">Loading your learning space...</div>;
+  }
+
+  if (!activeLearner) {
+    return <div className="py-16 text-center text-sm text-slate-500">Your learner profile could not be loaded.</div>;
+  }
+
   return (
     <div>
       {/* Top Header & Learner Profile Selector */}
@@ -187,25 +186,9 @@ export default function LearningPage() {
           )}
         </div>
 
-        {/* Staff Switcher to test multi-user assignments and admin privileges */}
         <div className="flex items-center gap-2 bg-white border border-slate-200/90 px-3 py-1.5 rounded-lg shadow-2xs self-start sm:self-auto">
-          <Users className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-          <span className="text-xs text-slate-500 font-medium">Logged in as:</span>
-          <select
-            value={activeLearner.id}
-            onChange={(e) => setCurrentUserId(e.target.value)}
-            className="bg-transparent text-xs font-semibold text-slate-800 border-none outline-none cursor-pointer"
-          >
-            {store.users.map((u) => {
-              const uIsAdmin = isUserAdmin(u.role);
-              const labelRole = u.role === 'org_admin' ? 'Admin' : u.role === 'manager' ? 'Manager' : 'Instructor';
-              return (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({labelRole} — {uIsAdmin ? 'Full Access' : 'Assigned Only'})
-                </option>
-              );
-            })}
-          </select>
+          <span className="text-xs text-slate-500 font-medium">Signed in as:</span>
+          <span className="text-xs font-semibold text-slate-800">{activeLearner.name}</span>
         </div>
       </div>
 

@@ -24,7 +24,7 @@ function EditUserModalContent({
 
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
-  const [role, setRole] = useState<'org_admin' | 'manager' | 'instructor'>(
+  const [role, setRole] = useState<'org_admin' | 'manager' | 'instructor' | 'learner'>(
     user.role === 'super_admin' ? 'org_admin' : user.role
   );
   const [status, setStatus] = useState<'active' | 'inactive'>(user.status);
@@ -50,7 +50,7 @@ function EditUserModalContent({
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -84,7 +84,7 @@ function EditUserModalContent({
     setIsSubmitting(true);
 
     try {
-      const updated = updateUser(user.id, {
+      const updated = await updateUser(user.id, {
         name: trimmedName,
         email: trimmedEmail,
         role,
@@ -190,11 +190,12 @@ function EditUserModalContent({
                 id="edit-user-role"
                 value={role}
                 onChange={(e) =>
-                  setRole(e.target.value as 'org_admin' | 'manager' | 'instructor')
+                  setRole(e.target.value as 'org_admin' | 'manager' | 'instructor' | 'learner')
                 }
                 className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-xs px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] text-slate-800 cursor-pointer"
               >
-                <option value="instructor">Instructor (Course & Learner Access)</option>
+                <option value="learner">Learner (Assigned Course Access)</option>
+                <option value="instructor">Instructor (Assigned Course Access)</option>
                 <option value="manager">Manager (School & Staff Operations)</option>
                 <option value="org_admin">Organization Admin (Full Administrative Authority)</option>
               </select>

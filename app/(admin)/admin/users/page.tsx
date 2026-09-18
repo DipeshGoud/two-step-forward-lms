@@ -14,7 +14,7 @@ export default function AdminUsersPage() {
   const [userToEdit, setUserToEdit] = useState<AdminUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'org_admin' | 'manager' | 'instructor'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'org_admin' | 'manager' | 'instructor' | 'learner'>('all');
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const handleUserAdded = (newUser: AdminUser) => {
@@ -67,10 +67,16 @@ export default function AdminUsersPage() {
           </span>
         );
       case 'instructor':
-      default:
         return (
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded">
             Instructor
+          </span>
+        );
+      case 'learner':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded">
+            Learner
           </span>
         );
     }
@@ -137,7 +143,7 @@ export default function AdminUsersPage() {
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="inline-flex rounded-md border border-slate-200 p-0.5 bg-slate-50 text-xs">
-            {(['all', 'org_admin', 'manager', 'instructor'] as const).map((r) => (
+            {(['all', 'org_admin', 'manager', 'instructor', 'learner'] as const).map((r) => (
               <button
                 key={r}
                 type="button"
@@ -154,7 +160,9 @@ export default function AdminUsersPage() {
                   ? 'Admin'
                   : r === 'manager'
                   ? 'Manager'
-                  : 'Instructor'}
+                  : r === 'instructor'
+                  ? 'Instructor'
+                  : 'Learner'}
               </button>
             ))}
           </div>

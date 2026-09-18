@@ -1,5 +1,3 @@
-import { createClient } from './client';
-
 export const STORAGE_BUCKET = 'lms-content';
 
 export function formatBytes(bytes: number, decimals = 1): string {
@@ -16,8 +14,7 @@ export function sanitizeFileName(name: string): string {
 }
 
 /**
- * Uploads a lesson media file (PDF, Image, Video) via secure Server API route /api/upload.
- * Bypasses RLS restrictions using service_role key on server and returns public URL.
+ * Uploads a lesson media file through the authenticated server API.
  */
 export async function uploadLessonMedia(
   file: File,
@@ -50,35 +47,8 @@ export async function uploadLessonMedia(
       fileSize: data.fileSize || formatBytes(file.size),
     };
   } catch (err) {
-    console.warn('Server upload failed, falling back to client-side upload / object URL:', err);
-    // Graceful fallback to client upload or local object URL
-    try {
-      const supabase = createClient();
-      const cleanName = sanitizeFileName(file.name);
-      const path = `${type}/${courseId}/${lessonId}_${Date.now()}_${cleanName}`;
-      const { data, error } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(path, file, { upsert: true });
-
-      if (!error && data) {
-        const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(data.path);
-        return {
-          url: urlData.publicUrl,
-          path: data.path,
-          fileName: file.name,
-          fileSize: formatBytes(file.size),
-        };
-      }
-    } catch {
-      // ignore
-    }
-
-    return {
-      url: URL.createObjectURL(file),
-      path: `local/${file.name}`,
-      fileName: file.name,
-      fileSize: formatBytes(file.size),
-    };
+    console.error('Server upload failed:', err);
+    throw err;
   }
 }
 
@@ -101,21 +71,16 @@ export async function uploadCourseThumbnail(
       body: formData,
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      return {
-        url: data.url,
-        path: data.path,
-      };
-    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Thumbnail upload failed with status ${res.status}`);
+    return {
+      url: data.url,
+      path: data.path,
+    };
   } catch (err) {
-    console.warn('Thumbnail server upload failed:', err);
+    console.error('Thumbnail server upload failed:', err);
+    throw err;
   }
-
-  return {
-    url: URL.createObjectURL(file),
-    path: `local/${file.name}`,
-  };
 }
 
 /**
@@ -131,9 +96,7 @@ export function getStoragePublicUrl(storagePath: string): string {
   ) {
     return storagePath;
   }
-  const supabase = createClient();
-  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
-  return data.publicUrl;
+  return `/api/content/files?path=${encodeURIComponent(storagePath)}`;
 }
 
 /**

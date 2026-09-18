@@ -12,11 +12,18 @@ import BrandLogo from '@/components/ui/BrandLogo';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/learning';
+  const requestedRedirect = searchParams.get('redirectTo') || '/learning';
+  const redirectTo = requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//')
+    ? requestedRedirect
+    : '/learning';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    searchParams.get('error') === 'profile_missing'
+      ? 'Your account is authenticated, but its LMS profile is not configured yet. Apply the Supabase migration or ask an administrator to provision your profile.'
+      : null
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,21 +108,6 @@ function LoginForm() {
           Sign In
         </Button>
 
-        <div className="pt-3 border-t border-slate-100 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              setEmail('admin@twostepforward.com');
-              setPassword('Password@123');
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md text-[11px] text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-          >
-            <span className="font-medium text-slate-500">Demo Login:</span>
-            <span className="font-semibold text-slate-800">admin@twostepforward.com</span>
-            <span className="text-slate-400">/</span>
-            <span className="font-mono text-slate-700">Password@123</span>
-          </button>
-        </div>
       </form>
     </Card>
   );

@@ -2,7 +2,8 @@ export type UserRole =
   | 'super_admin'
   | 'org_admin'
   | 'manager'
-  | 'instructor';
+  | 'instructor'
+  | 'learner';
 
 export interface UserProfile {
   id: string;

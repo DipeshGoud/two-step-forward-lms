@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthContext, isAdminRole } from '@/lib/auth/server';
+import { LMS_STORAGE_BUCKET } from '@/lib/lms/server';
 
 export const dynamic = 'force-dynamic';
 
-const STORAGE_BUCKET = 'lms-content';
+const STORAGE_BUCKET = LMS_STORAGE_BUCKET;
+const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
+const ALLOWED_TYPES = new Set(['pdf', 'image', 'video', 'thumbnails']);
 
 function formatBytes(bytes: number, decimals = 1): string {
   if (bytes === 0) return '0 Bytes';
@@ -18,8 +22,24 @@ function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_').toLowerCase();
 }
 
+function sanitizeSegment(value: string, fallback: string): string {
+  const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120);
+  return sanitized || fallback;
+}
+
 function extractBucketPath(urlOrPath: string): string | null {
   if (!urlOrPath) return null;
+
+  if (urlOrPath.includes('/api/content/files')) {
+    try {
+      const parsed = new URL(urlOrPath, 'http://lms.local');
+      const path = parsed.searchParams.get('path');
+      return path ? decodeURIComponent(path) : null;
+    } catch {
+      return null;
+    }
+  }
+
   // If it's a full Supabase storage URL: .../storage/v1/object/public/lms-content/video/...
   const marker = `/${STORAGE_BUCKET}/`;
   if (urlOrPath.includes(marker)) {
@@ -46,6 +66,11 @@ function extractBucketPath(urlOrPath: string): string | null {
  */
 export async function POST(req: NextRequest) {
   try {
+    const context = await getAuthContext();
+    if (!context || !isAdminRole(context.profile.role)) {
+      return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 });
+    }
+
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
     const type = (formData.get('type') as string) || 'general';
@@ -56,22 +81,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
+    if (!ALLOWED_TYPES.has(type)) {
+      return NextResponse.json({ error: 'Unsupported upload type.' }, { status: 400 });
+    }
+
+    if (file.size <= 0 || file.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: 'The file must be between 1 byte and 500 MB.' }, { status: 400 });
+    }
+
+    const expectedMimeTypes: Record<string, string[]> = {
+      pdf: ['application/pdf'],
+      image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+      video: ['video/mp4', 'video/webm', 'video/quicktime'],
+      thumbnails: ['image/jpeg', 'image/png', 'image/webp'],
+    };
+    if (!expectedMimeTypes[type]?.includes(file.type)) {
+      return NextResponse.json({ error: `The selected file is not a valid ${type} file.` }, { status: 400 });
+    }
+
     const supabaseAdmin = createAdminClient();
 
-    // Ensure storage bucket exists with public access
+    // Ensure the private storage bucket exists. The migration creates it in
+    // production; this keeps local setup resilient when the bucket is absent.
     const { data: buckets } = await supabaseAdmin.storage.listBuckets();
     const bucketExists = buckets?.some((b) => b.name === STORAGE_BUCKET);
 
     if (!bucketExists) {
       await supabaseAdmin.storage.createBucket(STORAGE_BUCKET, {
-        public: true,
+        public: false,
         fileSizeLimit: 524288000, // 500MB
       });
     }
 
     const cleanName = sanitizeFileName(file.name);
     const timestamp = Date.now();
-    const path = `${type}/${courseId}/${lessonId}_${timestamp}_${cleanName}`;
+    const path = `${sanitizeSegment(type, 'general')}/${sanitizeSegment(courseId, 'general')}/${sanitizeSegment(lessonId, `lesson-${timestamp}`)}_${timestamp}_${cleanName}`;
 
     // Convert file to ArrayBuffer / Buffer for server upload
     const arrayBuffer = await file.arrayBuffer();
@@ -90,13 +134,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const { data: urlData } = supabaseAdmin.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(data.path);
-
     return NextResponse.json({
       success: true,
-      url: urlData.publicUrl,
+      url: `/api/content/files?path=${encodeURIComponent(data.path)}`,
       path: data.path,
       fileName: file.name,
       fileSize: formatBytes(file.size),
@@ -113,6 +153,11 @@ export async function POST(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
+    const context = await getAuthContext();
+    if (!context || !isAdminRole(context.profile.role)) {
+      return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 });
+    }
+
     const body = await req.json().catch(() => ({}));
     const rawTargets: string[] = [];
 

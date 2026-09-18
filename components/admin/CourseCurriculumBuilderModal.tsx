@@ -74,6 +74,8 @@ export default function CourseCurriculumBuilderModal({
   useEffect(() => {
     if (isOpen) {
       if (course) {
+        // Form state is reset when the modal opens or a different course is selected.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setTitle(course.title || '');
         setDescription(course.description || '');
         setIsPublished(course.isPublished !== undefined ? course.isPublished : true);
@@ -147,7 +149,9 @@ export default function CourseCurriculumBuilderModal({
   const handleRemoveModule = (modId: string) => {
     const target = modules.find((m) => m.id === modId);
     if (target) {
-      const urls = target.lessons.map((l) => l.fileUrl).filter((u): u is string => Boolean(u));
+      const urls = target.lessons
+        .map((l) => l.storagePath || l.fileUrl)
+        .filter((u): u is string => Boolean(u));
       if (urls.length > 0) {
         urls.forEach((u) => newlyUploadedUrlsRef.current.delete(u));
         deleteStorageFiles(urls).catch((err) => console.warn('Cloud delete error:', err));
@@ -187,9 +191,10 @@ export default function CourseCurriculumBuilderModal({
   const handleRemoveLesson = (modId: string, lessonId: string) => {
     const targetModule = modules.find((m) => m.id === modId);
     const targetLesson = targetModule?.lessons.find((l) => l.id === lessonId);
-    if (targetLesson?.fileUrl) {
-      newlyUploadedUrlsRef.current.delete(targetLesson.fileUrl);
-      deleteStorageFile(targetLesson.fileUrl).catch((err) => console.warn('Cloud delete error:', err));
+    const targetPath = targetLesson?.storagePath || targetLesson?.fileUrl;
+    if (targetPath) {
+      newlyUploadedUrlsRef.current.delete(targetPath);
+      deleteStorageFile(targetPath).catch((err) => console.warn('Cloud delete error:', err));
     }
     setModules((prev) =>
       prev.map((m) => {
@@ -207,7 +212,7 @@ export default function CourseCurriculumBuilderModal({
     if (!targetUrl) {
       const targetMod = modules.find((m) => m.id === modId);
       const targetLes = targetMod?.lessons.find((l) => l.id === lessonId);
-      targetUrl = targetLes?.fileUrl;
+      targetUrl = targetLes?.storagePath || targetLes?.fileUrl;
     }
 
     if (targetUrl) {
@@ -217,6 +222,7 @@ export default function CourseCurriculumBuilderModal({
 
     handleUpdateLesson(modId, lessonId, {
       fileUrl: undefined,
+      storagePath: undefined,
       fileName: undefined,
       fileSize: undefined,
     });
@@ -252,9 +258,10 @@ export default function CourseCurriculumBuilderModal({
     // If this lesson already had an uploaded file, delete it from storage first before replacing
     const currentMod = modules.find((m) => m.id === modId);
     const currentLes = currentMod?.lessons.find((l) => l.id === lessonId);
-    if (currentLes?.fileUrl) {
-      newlyUploadedUrlsRef.current.delete(currentLes.fileUrl);
-      deleteStorageFile(currentLes.fileUrl).catch(() => {});
+    const currentPath = currentLes?.storagePath || currentLes?.fileUrl;
+    if (currentPath) {
+      newlyUploadedUrlsRef.current.delete(currentPath);
+      deleteStorageFile(currentPath).catch(() => {});
     }
 
     setUploadingLessonIds((prev) => ({ ...prev, [lessonId]: true }));
@@ -276,18 +283,19 @@ export default function CourseCurriculumBuilderModal({
       newlyUploadedUrlsRef.current.add(uploaded.url);
       handleUpdateLesson(modId, lessonId, {
         fileUrl: uploaded.url,
+        storagePath: uploaded.path,
         fileName: uploaded.fileName,
         fileSize: uploaded.fileSize,
         type: expectedType,
       });
     } catch (err) {
       console.error('Failed to upload file to Supabase storage:', err);
-      // Fallback to local object URL so user isn't blocked
+      setError(err instanceof Error ? err.message : 'The file could not be uploaded.');
       handleUpdateLesson(modId, lessonId, {
-        fileUrl: URL.createObjectURL(file),
-        fileName,
-        fileSize,
-        type: expectedType,
+        fileUrl: undefined,
+        storagePath: undefined,
+        fileName: undefined,
+        fileSize: undefined,
       });
     } finally {
       setUploadingLessonIds((prev) => ({ ...prev, [lessonId]: false }));
@@ -460,7 +468,7 @@ export default function CourseCurriculumBuilderModal({
   };
 
   // Submit and save curriculum
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError(null);
 
@@ -492,7 +500,7 @@ export default function CourseCurriculumBuilderModal({
 
     setIsSubmitting(true);
     try {
-      const savedCourse = saveCourseWithCurriculum({
+      const savedCourse = await saveCourseWithCurriculum({
         id: course?.id,
         title: trimmedTitle,
         description: description.trim(),

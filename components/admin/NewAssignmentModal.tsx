@@ -50,7 +50,7 @@ export default function NewAssignmentModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -61,7 +61,7 @@ export default function NewAssignmentModal({
 
     try {
       setIsSubmitting(true);
-      const newAsg = createAssignment({
+       const newAsg = await createAssignment({
         employeeId,
         courseId,
         schoolId,

@@ -39,7 +39,7 @@ function EditCourseModalContent({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -62,7 +62,7 @@ function EditCourseModalContent({
 
     setIsSubmitting(true);
     try {
-      const updated = updateCourse(course.id, {
+      const updated = await updateCourse(course.id, {
         title: trimmedTitle,
         totalLessons,
         durationMinutes,

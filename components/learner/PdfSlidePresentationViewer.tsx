@@ -17,12 +17,48 @@ import {
   FileText,
 } from 'lucide-react';
 
+interface PdfViewport {
+  width: number;
+  height: number;
+}
+
+interface PdfRenderTask {
+  promise: Promise<void>;
+  cancel: () => void;
+}
+
+interface PdfPage {
+  getViewport: (options: { scale: number }) => PdfViewport;
+  render: (options: { canvasContext: CanvasRenderingContext2D; viewport: PdfViewport }) => PdfRenderTask;
+}
+
+interface PdfDocument {
+  numPages: number;
+  getPage: (pageNumber: number) => Promise<PdfPage>;
+}
+
+interface PdfLoadingTask {
+  promise: Promise<PdfDocument>;
+}
+
+interface PdfJsLibrary {
+  GlobalWorkerOptions: { workerSrc: string };
+  getDocument: (source: string | { data: Uint8Array }) => PdfLoadingTask;
+}
+
+declare global {
+  interface Window {
+    pdfjsLib?: PdfJsLibrary;
+  }
+}
+
 interface PdfSlidePresentationViewerProps {
   lesson: {
     id: string;
     title: string;
     summary?: string;
     content?: string;
+    type?: string;
     fileUrl?: string;
     fileName?: string;
     fileSize?: string;
@@ -48,26 +84,26 @@ export default function PdfSlidePresentationViewer({
   const [isPdfReady, setIsPdfReady] = useState(false);
   const [isLoadingDoc, setIsLoadingDoc] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const [pdfDoc, setPdfDoc] = useState<PdfDocument | null>(null);
   const [isPdfError, setIsPdfError] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageContainerRef = useRef<HTMLDivElement>(null);
   const viewerWrapperRef = useRef<HTMLDivElement>(null);
-  const currentRenderTaskRef = useRef<any>(null);
+  const currentRenderTaskRef = useRef<PdfRenderTask | null>(null);
 
   // 1. Dynamically load PDF.js from CDN
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if ((window as any).pdfjsLib) {
-      setIsPdfReady(true);
+    if (window.pdfjsLib) {
+      queueMicrotask(() => setIsPdfReady(true));
       return;
     }
     const script = document.createElement('script');
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
     script.async = true;
     script.onload = () => {
-      const pdfjsLib = (window as any).pdfjsLib;
+      const pdfjsLib = window.pdfjsLib;
       if (pdfjsLib) {
         pdfjsLib.GlobalWorkerOptions.workerSrc =
           'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -80,7 +116,8 @@ export default function PdfSlidePresentationViewer({
 
   // 2. Load PDF document
   const loadPdf = useCallback(() => {
-    if (!lesson.fileUrl || !isPdfReady) {
+    const fileUrl = lesson.fileUrl;
+    if (!fileUrl || !isPdfReady) {
       setTotalPages(5);
       setCurrentPage(1);
       setPageInput('1');
@@ -90,9 +127,10 @@ export default function PdfSlidePresentationViewer({
     }
 
     const isPdfCandidate =
-      lesson.fileUrl.startsWith('data:application/pdf') ||
-      lesson.fileUrl.toLowerCase().includes('.pdf') ||
-      lesson.fileUrl.toLowerCase().includes('application/pdf');
+      lesson.type === 'pdf' ||
+      fileUrl.startsWith('data:application/pdf') ||
+      fileUrl.toLowerCase().includes('.pdf') ||
+      fileUrl.toLowerCase().includes('application/pdf');
 
     if (!isPdfCandidate) {
       setTotalPages(5);
@@ -108,17 +146,17 @@ export default function PdfSlidePresentationViewer({
 
     const loadPdfDoc = async () => {
       try {
-        const pdfjsLib = (window as any).pdfjsLib;
+        const pdfjsLib = window.pdfjsLib;
         if (!pdfjsLib) return;
-        let loadingTask;
-        if (lesson.fileUrl?.startsWith('data:application/pdf;base64,')) {
-          const base64 = lesson.fileUrl.split(',')[1];
+        let loadingTask: PdfLoadingTask;
+        if (fileUrl.startsWith('data:application/pdf;base64,')) {
+          const base64 = fileUrl.split(',')[1];
           const binaryStr = window.atob(base64);
           const bytes = new Uint8Array(binaryStr.length);
           for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
           loadingTask = pdfjsLib.getDocument({ data: bytes });
         } else {
-          loadingTask = pdfjsLib.getDocument(lesson.fileUrl);
+          loadingTask = pdfjsLib.getDocument(fileUrl);
         }
         const pdf = await loadingTask.promise;
         if (!isMounted) return;
@@ -140,14 +178,18 @@ export default function PdfSlidePresentationViewer({
     return () => {
       isMounted = false;
     };
-  }, [lesson.fileUrl, isPdfReady, lesson.id]);
+  }, [lesson.fileUrl, lesson.type, isPdfReady, lesson.id]);
 
   useEffect(() => {
+    // PDF.js loading updates state as an external document resolves.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadPdf();
   }, [loadPdf]);
 
   // Sync page input when page changes
   useEffect(() => {
+    // Keep the editable page field aligned with navigation state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPageInput(String(currentPage));
   }, [currentPage]);
 
@@ -217,8 +259,9 @@ export default function PdfSlidePresentationViewer({
         const task = page.render(renderContext);
         currentRenderTaskRef.current = task;
         await task.promise;
-      } catch (err: any) {
-        if (err?.name !== 'RenderingCancelledException') {
+      } catch (err: unknown) {
+        const errorName = typeof err === 'object' && err !== null && 'name' in err ? String(err.name) : '';
+        if (errorName !== 'RenderingCancelledException') {
           console.error('Render error:', err);
         }
       }
@@ -437,7 +480,7 @@ export default function PdfSlidePresentationViewer({
 
   // Window resize handler with debounce
   useEffect(() => {
-    let timer: any;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const handleResize = () => {
       clearTimeout(timer);
       timer = setTimeout(() => {

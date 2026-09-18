@@ -38,7 +38,7 @@ import {
   Maximize,
   AlertCircle,
 } from 'lucide-react';
-import { useAdminStore, AdminCourse, DEFAULT_LEARNER_ID, CourseLessonType, isUserAdmin } from '@/lib/data/adminStore';
+import { useAdminStore, AdminCourse, CourseLessonType, isUserAdmin } from '@/lib/data/adminStore';
 import { CourseReviewModal } from './CourseReviewModal';
 import PdfSlidePresentationViewer from './PdfSlidePresentationViewer';
 
@@ -81,7 +81,6 @@ export interface Module {
 
 interface CoursePlayerProps {
   courseId: string;
-  isPreviewInitial?: boolean;
 }
 
 function isYouTubeUrl(url: string) {
@@ -1027,9 +1026,8 @@ function QuizViewer({
 // -------------------------------------------------------------------------------------------------
 // MAIN COURSE PLAYER COMPONENT (Content-First LMS Layout)
 // -------------------------------------------------------------------------------------------------
-export function CoursePlayer({ courseId, isPreviewInitial = false }: CoursePlayerProps) {
+export function CoursePlayer({ courseId }: CoursePlayerProps) {
   const { store, updateLearnerCourseProgress } = useAdminStore();
-  const [isAdminPreviewOverride, setIsAdminPreviewOverride] = useState(isPreviewInitial);
 
   // Retrieve course from store
   const course: AdminCourse = useMemo(() => {
@@ -1049,11 +1047,11 @@ export function CoursePlayer({ courseId, isPreviewInitial = false }: CoursePlaye
 
   // Current active learner
   const activeLearner = useMemo(() => {
-    const currentId = store.currentUserId || DEFAULT_LEARNER_ID;
+    const currentId = store.currentUserId;
     return store.users.find((u) => u.id === currentId) || store.users[0];
   }, [store.users, store.currentUserId]);
 
-  const isAdmin = isUserAdmin(activeLearner?.role) || isPreviewInitial || isAdminPreviewOverride;
+  const isAdmin = isUserAdmin(activeLearner?.role);
 
   // Current assignment check (Admins get unrestricted direct access per Rule 9 & User Request)
   const assignment = useMemo(() => {
@@ -1298,6 +1296,8 @@ export function CoursePlayer({ courseId, isPreviewInitial = false }: CoursePlaye
   const [activeLessonId, setActiveLessonId] = useState<string>(allLessons[0]?.id || '');
   useEffect(() => {
     if (allLessons.length > 0 && (!activeLessonId || !allLessons.some((l) => l.id === activeLessonId))) {
+      // Reset the selection when a refreshed curriculum no longer contains it.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveLessonId(allLessons[0].id);
     }
   }, [allLessons, activeLessonId]);
@@ -1420,14 +1420,6 @@ export function CoursePlayer({ courseId, isPreviewInitial = false }: CoursePlaye
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Return to My Courses</span>
           </Link>
-          <button
-            type="button"
-            onClick={() => setIsAdminPreviewOverride(true)}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-4 py-2 rounded-lg transition-colors cursor-pointer"
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Preview Curriculum (Admin Mode)</span>
-          </button>
         </div>
       </div>
     );

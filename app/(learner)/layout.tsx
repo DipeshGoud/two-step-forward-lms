@@ -1,61 +1,27 @@
 import React from 'react';
+import { redirect } from 'next/navigation';
 import { Header } from '@/components/layout/header';
-import { createClient } from '@/lib/supabase/server';
 import { LMSNotification } from '@/types/lms';
 import { UserProfile } from '@/types/auth';
+import { getAuthContext } from '@/lib/auth/server';
 
 export default async function LearnerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  let userProfile: UserProfile | null = null;
-  const notifications: LMSNotification[] = [];
+  const context = await getAuthContext();
+  if (!context) redirect('/login?error=profile_missing');
 
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  const { data: userNotifications } = await context.supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', context.user.id)
+    .order('created_at', { ascending: false })
+    .limit(10);
 
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (profile) {
-        userProfile = profile as UserProfile;
-      } else {
-        userProfile = {
-          id: user.id,
-          organization_id: '',
-          email: user.email || '',
-          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Learner',
-          avatar_url: null,
-          role: 'instructor',
-          is_active: true,
-          created_at: user.created_at,
-          updated_at: user.created_at,
-        };
-      }
-
-      // Fetch unread notifications
-      const { data: userNotifications } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (userNotifications) {
-        notifications.push(...(userNotifications as LMSNotification[]));
-      }
-    }
-  } catch {
-    // Continue with fallback shell if supabase is offline
-  }
+  const userProfile = context.profile as UserProfile;
+  const notifications = (userNotifications || []) as LMSNotification[];
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900">

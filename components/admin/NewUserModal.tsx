@@ -19,7 +19,7 @@ export default function NewUserModal({
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'org_admin' | 'manager' | 'instructor'>('instructor');
+  const [role, setRole] = useState<'org_admin' | 'manager' | 'instructor' | 'learner'>('learner');
   const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,7 +37,7 @@ export default function NewUserModal({
   const resetForm = () => {
     setName('');
     setEmail('');
-    setRole('instructor');
+    setRole('learner');
     setSelectedSchools(store.schools.length > 0 ? [store.schools[0].name] : ['Downtown Academy']);
     setError(null);
   };
@@ -57,7 +57,7 @@ export default function NewUserModal({
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -89,7 +89,7 @@ export default function NewUserModal({
 
     setIsSubmitting(true);
     try {
-      const created = createUser({
+      const created = await createUser({
         name: trimmedName,
         email: trimmedEmail,
         role,
@@ -193,11 +193,12 @@ export default function NewUserModal({
               <select
                 value={role}
                 onChange={(e) =>
-                  setRole(e.target.value as 'org_admin' | 'manager' | 'instructor')
+                  setRole(e.target.value as 'org_admin' | 'manager' | 'instructor' | 'learner')
                 }
                 className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[var(--brand-primary)] focus:ring-[var(--brand-primary)]/20"
               >
-                <option value="instructor">Instructor / Employee</option>
+                <option value="learner">Learner / Employee</option>
+                <option value="instructor">Instructor / Content Author</option>
                 <option value="manager">Campus Manager</option>
                 <option value="org_admin">Organization Admin</option>
               </select>
