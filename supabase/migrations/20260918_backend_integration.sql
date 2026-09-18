@@ -17,6 +17,16 @@ alter table public.lessons
   add constraint lessons_content_type_check
   check (content_type in ('video', 'pdf', 'image', 'text', 'reading', 'quiz'));
 
+-- SQL Editor-created tables may not inherit Supabase's default PostgREST
+-- grants. RLS remains the permission boundary for authenticated users.
+grant usage on schema public to authenticated, service_role;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant all privileges on all tables in schema public to service_role;
+alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;
+alter default privileges in schema public grant all privileges on tables to service_role;
+grant execute on function public.current_user_org_id() to authenticated, service_role;
+grant execute on function public.current_user_role() to authenticated, service_role;
+
 -- Instructors and learners only see published courses assigned to them.
 drop policy if exists "Learners view assigned published courses; staff view all org courses" on public.courses;
 create policy "Users view assigned published courses; admins view org courses"

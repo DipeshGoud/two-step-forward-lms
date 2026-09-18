@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
   Plus,
@@ -18,8 +18,6 @@ import {
   Upload,
   Image as ImageIcon,
   File as FileIcon,
-  Download,
-  ExternalLink,
   Loader2,
 } from 'lucide-react';
 import {
@@ -59,7 +57,7 @@ export default function CourseCurriculumBuilderModal({
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Close and purge any uncommitted file uploads from Supabase cloud storage
-  const handleCancelAndClose = async () => {
+  const handleCancelAndClose = useCallback(async () => {
     if (newlyUploadedUrlsRef.current.size > 0) {
       const pendingUrls = Array.from(newlyUploadedUrlsRef.current);
       newlyUploadedUrlsRef.current.clear();
@@ -68,7 +66,7 @@ export default function CourseCurriculumBuilderModal({
       );
     }
     onClose();
-  };
+  }, [onClose]);
 
   // Populate data whenever modal opens or course changes
   useEffect(() => {
@@ -114,7 +112,7 @@ export default function CourseCurriculumBuilderModal({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, handleCancelAndClose]);
 
   if (!isOpen) return null;
 

@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { canAuthorContent, getAuthContext, isAdminRole, type AuthContext } from '@/lib/auth/server';
 import type { UserRole } from '@/types/auth';
@@ -47,6 +48,13 @@ function boundedNumber(input: UnknownRecord, key: string, fallback: number, min:
   const value = Number(input[key]);
   if (!Number.isFinite(value)) return fallback;
   return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+function generateTemporaryPassword(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = randomBytes(12);
+  const body = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('');
+  return `${body}!7`;
 }
 
 function validRole(value: unknown): value is UserRole {
@@ -245,17 +253,17 @@ function mapAssignment(
 }
 
 export async function getBootstrap(context: AuthContext): Promise<AdminStoreData> {
-  const admin = createAdminClient();
+  const database = context.supabase;
   const organizationId = context.profile.organization_id;
   const hasAdminAccess = isAdminRole(context.profile.role);
 
-  const { data: membershipRows, error: membershipError } = await admin
+  const { data: membershipRows, error: membershipError } = await database
     .from('school_memberships')
     .select('user_id, school_id')
     .eq('organization_id', organizationId);
   if (membershipError) throw new LmsError('Could not load school memberships.', 500);
 
-  const { data: assignmentRows, error: assignmentError } = await admin
+  const { data: assignmentRows, error: assignmentError } = await database
     .from('course_assignments')
     .select('*')
     .eq('organization_id', organizationId)
@@ -265,10 +273,10 @@ export async function getBootstrap(context: AuthContext): Promise<AdminStoreData
   const visibleAssignments = (assignmentRows || []) as UnknownRecord[];
   const visibleCourseIds = Array.from(new Set(visibleAssignments.map((assignment) => String(assignment.course_id))));
 
-  let courseQuery = admin.from('courses').select('*').eq('organization_id', organizationId);
+  let courseQuery = database.from('courses').select('*').eq('organization_id', organizationId);
   if (!hasAdminAccess) {
     if (visibleCourseIds.length === 0) {
-      courseQuery = admin.from('courses').select('*').eq('organization_id', organizationId).eq('id', '00000000-0000-0000-0000-000000000000');
+      courseQuery = database.from('courses').select('*').eq('organization_id', organizationId).eq('id', '00000000-0000-0000-0000-000000000000');
     } else {
       courseQuery = courseQuery.in('id', visibleCourseIds);
     }
@@ -279,32 +287,32 @@ export async function getBootstrap(context: AuthContext): Promise<AdminStoreData
   const courseIds = coursesRows.map((course) => String(course.id));
 
   const { data: moduleRows, error: moduleError } = courseIds.length
-    ? await admin.from('course_modules').select('*').in('course_id', courseIds).order('order_index')
+    ? await database.from('course_modules').select('*').in('course_id', courseIds).order('order_index')
     : { data: [], error: null };
   if (moduleError) throw new LmsError('Could not load course modules.', 500);
   const modulesRows = (moduleRows || []) as UnknownRecord[];
   const moduleIds = modulesRows.map((module) => String(module.id));
 
   const { data: lessonRows, error: lessonError } = moduleIds.length
-    ? await admin.from('lessons').select('*').in('module_id', moduleIds).order('order_index')
+    ? await database.from('lessons').select('*').in('module_id', moduleIds).order('order_index')
     : { data: [], error: null };
   if (lessonError) throw new LmsError('Could not load lessons.', 500);
   const lessonsRows = (lessonRows || []) as UnknownRecord[];
   const lessonIds = lessonsRows.map((lesson) => String(lesson.id));
 
   const { data: quizRows, error: quizError } = lessonIds.length
-    ? await admin.from('quizzes').select('*').in('lesson_id', lessonIds)
+    ? await database.from('quizzes').select('*').in('lesson_id', lessonIds)
     : { data: [], error: null };
   if (quizError) throw new LmsError('Could not load quiz configuration.', 500);
   const quizzesRows = (quizRows || []) as UnknownRecord[];
   const quizIds = quizzesRows.map((quiz) => String(quiz.id));
 
   const { data: questionRows, error: questionError } = quizIds.length
-    ? await admin.from('quiz_questions').select('*').in('quiz_id', quizIds).order('order_index')
+    ? await database.from('quiz_questions').select('*').in('quiz_id', quizIds).order('order_index')
     : { data: [], error: null };
   if (questionError) throw new LmsError('Could not load quiz questions.', 500);
 
-  const { data: schoolRows, error: schoolError } = await admin
+  const { data: schoolRows, error: schoolError } = await database
     .from('schools')
     .select('*')
     .eq('organization_id', organizationId)
@@ -313,8 +321,8 @@ export async function getBootstrap(context: AuthContext): Promise<AdminStoreData
   const schoolsRows = (schoolRows || []) as UnknownRecord[];
 
   const { data: profileRows, error: profileError } = hasAdminAccess
-    ? await admin.from('profiles').select('*').eq('organization_id', organizationId).order('full_name')
-    : await admin.from('profiles').select('*').eq('id', context.user.id);
+    ? await database.from('profiles').select('*').eq('organization_id', organizationId).order('full_name')
+    : await database.from('profiles').select('*').eq('id', context.user.id);
   if (profileError) throw new LmsError('Could not load users.', 500);
   const profilesRows = (profileRows || []) as UnknownRecord[];
 
@@ -464,22 +472,26 @@ export async function performMutation(context: AuthContext, action: string, rawI
     const email = requiredString(input, 'email').toLowerCase();
     const role = validRole(input.role) && input.role !== 'super_admin' ? input.role : 'learner';
     const schoolNames = Array.isArray(input.schools) ? input.schools.filter((item): item is string => typeof item === 'string') : [];
-    const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: name },
+    const temporaryPassword = generateTemporaryPassword();
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email,
+      password: temporaryPassword,
+      email_confirm: true,
+      user_metadata: { full_name: name },
     });
-    if (inviteError || !invited.user) throw new LmsError(inviteError?.message || 'Could not invite the user.', 400);
+    if (createError || !created.user) throw new LmsError(createError?.message || 'Could not create the user.', 400);
 
     const { error: profileError } = await admin.from('profiles').upsert({
-      id: invited.user.id,
+      id: created.user.id,
       organization_id: organizationId,
       email,
       full_name: name,
       role,
       is_active: true,
     });
-    if (profileError) throw new LmsError('The user was invited but the profile could not be created.', 500);
-    await replaceMemberships(admin, organizationId, invited.user.id, schoolNames);
-    return { id: invited.user.id };
+    if (profileError) throw new LmsError('The user was created but the profile could not be saved.', 500);
+    await replaceMemberships(admin, organizationId, created.user.id, schoolNames);
+    return { id: created.user.id, temporaryPassword };
   }
 
   if (action === 'update_user') {

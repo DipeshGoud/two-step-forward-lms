@@ -162,10 +162,13 @@ export const adminStore = {
     email: string;
     role: 'super_admin' | 'org_admin' | 'manager' | 'instructor' | 'learner';
     schools: string[];
-  }): Promise<AdminUser> {
+  }): Promise<{ user: AdminUser; temporaryPassword: string }> {
     const response = await mutate('create_user', payload);
     const userId = String(response.result?.id || '');
-    return findUser(userId, memoryStore);
+    return {
+      user: findUser(userId, memoryStore),
+      temporaryPassword: String(response.result?.temporaryPassword || ''),
+    };
   },
 
   async updateUser(userId: string, payload: Partial<Omit<AdminUser, 'id'>>): Promise<AdminUser> {

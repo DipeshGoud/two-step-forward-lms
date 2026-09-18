@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, AlertCircle } from 'lucide-react';
+import { X, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAdminStore, AdminUser } from '@/lib/data/adminStore';
 
 interface NewUserModalProps {
@@ -23,6 +23,8 @@ export default function NewUserModal({
   const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [issuedCredentials, setIssuedCredentials] = useState<{ name: string; email: string; password: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -40,6 +42,8 @@ export default function NewUserModal({
     setRole('learner');
     setSelectedSchools(store.schools.length > 0 ? [store.schools[0].name] : ['Downtown Academy']);
     setError(null);
+    setIssuedCredentials(null);
+    setCopied(false);
   };
 
   const handleClose = () => {
@@ -48,6 +52,76 @@ export default function NewUserModal({
   };
 
   if (!isOpen) return null;
+
+  if (issuedCredentials) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] transition-opacity" onClick={handleClose} />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="new-user-success-title"
+          className="relative bg-white rounded-xl shadow-xl border border-slate-200/90 w-full max-w-lg z-10 overflow-hidden"
+        >
+          <div className="px-6 py-5 border-b border-slate-100 bg-emerald-50/60 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-4.5 h-4.5" />
+            </div>
+            <div>
+              <h2 id="new-user-success-title" className="text-base font-bold text-slate-900 leading-tight">
+                Account created
+              </h2>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Share these credentials with {issuedCredentials.name}. The password is shown once.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 space-y-2.5">
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Email</span>
+                <span className="block text-sm font-semibold text-slate-900 break-all">{issuedCredentials.email}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Temporary password</span>
+                <span className="block font-mono text-sm font-semibold text-slate-900 break-all">{issuedCredentials.password}</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500">
+              The user should change this password after their first sign-in.
+            </p>
+
+            <div className="pt-2 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(`Email: ${issuedCredentials.email}\nPassword: ${issuedCredentials.password}`);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  } catch {
+                    setCopied(false);
+                  }
+                }}
+                className="px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer"
+              >
+                {copied ? 'Copied' : 'Copy credentials'}
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-2 text-xs font-semibold text-white bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] rounded-lg shadow-xs transition-colors cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleToggleSchool = (schoolName: string) => {
     setSelectedSchools((prev) =>
@@ -89,7 +163,7 @@ export default function NewUserModal({
 
     setIsSubmitting(true);
     try {
-      const created = await createUser({
+      const { user: created, temporaryPassword } = await createUser({
         name: trimmedName,
         email: trimmedEmail,
         role,
@@ -97,7 +171,7 @@ export default function NewUserModal({
       });
 
       if (onSuccess) onSuccess(created);
-      onClose();
+      setIssuedCredentials({ name: created.name, email: created.email, password: temporaryPassword });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to add user');
     } finally {

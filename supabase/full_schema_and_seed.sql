@@ -759,3 +759,12 @@ on conflict (id) do update set
   prompt = excluded.prompt,
   options = excluded.options,
   correct_answers = excluded.correct_answers;
+
+-- PostgREST grants for authenticated users; RLS remains authoritative.
+grant usage on schema public to authenticated, service_role;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant all privileges on all tables in schema public to service_role;
+alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;
+alter default privileges in schema public grant all privileges on tables to service_role;
+grant execute on function public.current_user_org_id() to authenticated, service_role;
+grant execute on function public.current_user_role() to authenticated, service_role;

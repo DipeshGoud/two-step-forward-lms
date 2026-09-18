@@ -14,7 +14,6 @@ import {
   MoveHorizontal,
   Maximize,
   X,
-  FileText,
 } from 'lucide-react';
 
 interface PdfViewport {
@@ -66,15 +65,11 @@ interface PdfSlidePresentationViewerProps {
     durationMinutes: number;
   };
   courseTitle: string;
-  onNextLesson?: () => void;
-  hasNextLesson?: boolean;
 }
 
 export default function PdfSlidePresentationViewer({
   lesson,
   courseTitle,
-  onNextLesson,
-  hasNextLesson,
 }: PdfSlidePresentationViewerProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -178,7 +173,7 @@ export default function PdfSlidePresentationViewer({
     return () => {
       isMounted = false;
     };
-  }, [lesson.fileUrl, lesson.type, isPdfReady, lesson.id]);
+  }, [lesson.fileUrl, lesson.type, isPdfReady]);
 
   useEffect(() => {
     // PDF.js loading updates state as an external document resolves.

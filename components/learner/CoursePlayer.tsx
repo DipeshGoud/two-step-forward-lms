@@ -15,15 +15,12 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronDown,
-  Award,
   Download,
   RotateCcw,
-  Sparkles,
   ShieldAlert,
   Star,
   Check,
   Shield,
-  ExternalLink,
   Volume2,
   Volume1,
   VolumeX,
@@ -100,16 +97,6 @@ function getYouTubeEmbed(url: string) {
     if (url.includes('youtube.com/embed/')) return url;
   } catch {}
   return url;
-}
-
-function isVideoFile(url?: string) {
-  if (!url) return false;
-  return /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url) || url.startsWith('data:video') || url.startsWith('blob:');
-}
-
-function isImageFile(url?: string) {
-  if (!url) return false;
-  return /\.(jpg|jpeg|png|gif|webp|svg|avif)(\?|$)/i.test(url) || url.startsWith('data:image') || url.startsWith('blob:');
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -234,7 +221,6 @@ function VideoViewer({
   const isYouTube = lesson.fileUrl ? isYouTubeUrl(lesson.fileUrl) : false;
   // Fallback demo video stream if no custom url is provided
   const videoSource = lesson.fileUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
-  const hasVideoSrc = !isYouTube;
 
   useEffect(() => {
     const v = videoRef.current;
@@ -374,7 +360,7 @@ function VideoViewer({
     <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className={`flex-1 w-full min-h-0 flex flex-col bg-[#0B0F19] relative select-none overflow-hidden ${
+      className={`flex-1 w-full min-h-0 flex flex-col bg-slate-950 relative select-none overflow-hidden ${
         isFullscreen ? 'fixed inset-0 z-[100]' : ''
       }`}
     >
@@ -382,7 +368,7 @@ function VideoViewer({
       {isFullscreen && (
         <div className="h-12 bg-slate-950/90 border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between gap-4 shrink-0 text-white z-20 backdrop-blur-md">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
             <span className="text-xs font-bold text-slate-100 truncate">
               {courseTitle ? `${courseTitle} • ` : ''}
               {lesson.title}
@@ -399,10 +385,10 @@ function VideoViewer({
       )}
 
       {/* Main Video Theater Stage */}
-      <div className="flex-1 w-full min-h-0 flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-hidden relative">
+      <div className="flex-1 w-full min-h-0 flex items-center justify-center p-3 sm:p-6 lg:p-8 overflow-hidden relative bg-slate-950">
         <div
-          className="relative w-full max-w-5xl aspect-[16/9] bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-800/80 flex items-center justify-center"
-          style={{ maxHeight: isFullscreen ? 'calc(100vh - 110px)' : 'calc(100vh - 175px)' }}
+          className="relative w-full max-w-6xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800/80 flex items-center justify-center"
+          style={{ maxHeight: isFullscreen ? 'calc(100vh - 100px)' : 'calc(100vh - 170px)' }}
         >
           {isYouTube ? (
             <iframe
@@ -427,7 +413,7 @@ function VideoViewer({
                     videoRef.current.play().catch(() => {});
                   }
                 }}
-                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white transition-colors"
               >
                 <RotateCcw className="w-3.5 h-3.5" /> Try Again
               </button>
@@ -446,19 +432,18 @@ function VideoViewer({
 
               {/* Buffering Spinner */}
               {isBuffering && (
-                <div className="absolute inset-0 m-auto w-12 h-12 border-3 border-purple-500 border-t-transparent rounded-full animate-spin pointer-events-none z-10" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 border-3 border-rose-500 border-t-transparent rounded-full animate-spin pointer-events-none z-10" />
               )}
 
-              {/* Center Play Button Overlay */}
+              {/* Center Play Button Overlay - Perfectly Centered */}
               {!isPlaying && !isBuffering && (
                 <button
                   type="button"
                   onClick={togglePlay}
-                  className="absolute inset-0 m-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/95 hover:bg-white text-[#7C3AED] flex items-center justify-center shadow-2xl transition-all duration-200 hover:scale-110 z-10 backdrop-blur cursor-pointer"
-                  style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/95 hover:bg-white text-rose-600 flex items-center justify-center shadow-[0_12px_40px_rgba(0,0,0,0.6)] transition-all duration-200 hover:scale-110 z-10 backdrop-blur cursor-pointer group"
                   title="Play Video (Space)"
                 >
-                  <Play className="w-8 h-8 sm:w-10 sm:h-10 fill-[#7C3AED] translate-x-0.5" />
+                  <Play className="w-7 h-7 sm:w-9 sm:h-9 fill-rose-600 text-rose-600 translate-x-0.5 transition-transform group-hover:scale-105" />
                 </button>
               )}
 
@@ -474,7 +459,7 @@ function VideoViewer({
                   onClick={handleSeek}
                 >
                   <div
-                    className="h-full bg-[#7C3AED] rounded-full relative"
+                    className="h-full bg-rose-600 rounded-full relative"
                     style={{ width: `${progress}%` }}
                   >
                     <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -488,7 +473,7 @@ function VideoViewer({
                     <button
                       type="button"
                       onClick={togglePlay}
-                      className="p-1 rounded-lg hover:bg-white/15 text-white transition-colors"
+                      className="p-1 rounded-lg hover:bg-white/15 text-white transition-colors cursor-pointer"
                       title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
                     >
                       {isPlaying ? (
@@ -503,7 +488,7 @@ function VideoViewer({
                       <button
                         type="button"
                         onClick={toggleMute}
-                        className="p-1 rounded-lg hover:bg-white/15 text-white transition-colors"
+                        className="p-1 rounded-lg hover:bg-white/15 text-white transition-colors cursor-pointer"
                         title={isMuted ? 'Unmute' : 'Mute'}
                       >
                         {isMuted || volume === 0 ? (
@@ -521,7 +506,7 @@ function VideoViewer({
                         step="0.05"
                         value={isMuted ? 0 : volume}
                         onChange={handleVolumeChange}
-                        className="w-14 sm:w-20 h-1.5 accent-purple-500 bg-white/30 rounded-lg cursor-pointer transition-all"
+                        className="w-14 sm:w-20 h-1.5 accent-rose-500 bg-white/30 rounded-lg cursor-pointer transition-all"
                       />
                     </div>
 
@@ -541,7 +526,7 @@ function VideoViewer({
                         setPlaybackSpeed(val);
                         if (videoRef.current) videoRef.current.playbackRate = val;
                       }}
-                      className="bg-black/60 border border-white/20 text-white text-xs font-semibold rounded-lg px-2 py-1 focus:outline-none focus:border-purple-500 cursor-pointer"
+                      className="bg-black/60 border border-white/20 text-white text-xs font-semibold rounded-lg px-2 py-1 focus:outline-none focus:border-rose-500 cursor-pointer"
                     >
                       <option value={0.75}>0.75x</option>
                       <option value={1}>1.0x</option>
@@ -554,7 +539,7 @@ function VideoViewer({
                     <button
                       type="button"
                       onClick={togglePiP}
-                      className="p-1.5 rounded-lg hover:bg-white/15 text-slate-300 hover:text-white transition-colors hidden sm:inline-flex"
+                      className="p-1.5 rounded-lg hover:bg-white/15 text-slate-300 hover:text-white transition-colors cursor-pointer hidden sm:inline-flex"
                       title="Picture in Picture"
                     >
                       <PictureInPicture2 className="w-4 h-4" />
@@ -564,7 +549,7 @@ function VideoViewer({
                     <button
                       type="button"
                       onClick={toggleFullscreen}
-                      className="p-1.5 rounded-lg hover:bg-white/15 text-white transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-white/15 text-white transition-colors cursor-pointer"
                       title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
                     >
                       {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -576,40 +561,8 @@ function VideoViewer({
           )}
         </div>
       </div>
-
-      {/* Sleek Bottom Video Meta Bar */}
-      <div className="h-12 bg-slate-900 border-t border-slate-800 px-4 sm:px-6 flex items-center justify-between gap-3 shrink-0 text-xs text-slate-400 w-full z-10 shadow-2xs">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="px-2 py-0.5 rounded bg-purple-950/80 border border-purple-800 text-purple-300 font-bold text-[10px] uppercase tracking-wide">
-            HD Video
-          </span>
-          <span className="font-semibold text-slate-200 truncate">{lesson.title}</span>
-          <span className="text-slate-500 hidden sm:inline">• {lesson.durationMinutes} min</span>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {lesson.fileUrl && !isYouTube && (
-            <a
-              href={lesson.fileUrl}
-              download={lesson.fileName || 'video.mp4'}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
-              title="Download Video File"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Download</span>
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors"
-            title="Toggle Theater Fullscreen"
-          >
-            <Maximize2 className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
     </div>
+
   );
 }
 
@@ -677,7 +630,7 @@ function ImageViewer({
       {isFullscreen && (
         <div className="h-12 bg-slate-900 border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between gap-4 shrink-0 text-white z-20 shadow-md">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
             <span className="text-xs font-bold text-slate-100 truncate">
               {courseTitle ? `${courseTitle} • ` : ''}
               {lesson.title}
@@ -700,7 +653,7 @@ function ImageViewer({
       >
         {isLoading ? (
           <div className="my-auto flex flex-col items-center justify-center gap-3 text-slate-600 p-8">
-            <div className="w-8 h-8 border-3 border-purple-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-3 border-rose-600 border-t-transparent rounded-full animate-spin" />
             <span className="text-xs font-semibold text-slate-600">Loading image...</span>
           </div>
         ) : isError ? (
@@ -710,7 +663,7 @@ function ImageViewer({
             <p className="text-xs text-slate-500">The requested learning image could not be loaded.</p>
             <button
               onClick={() => setIsError(false)}
-              className="mt-2 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+              className="mt-2 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" /> Try Again
             </button>
@@ -727,12 +680,10 @@ function ImageViewer({
                   setIsLoading(false);
                   setIsError(true);
                 }}
-                className={`transition-all duration-150 ${
-                  fitMode === 'screen'
-                    ? 'max-w-full max-h-[calc(100vh-175px)] object-contain block'
-                    : 'w-full max-w-5xl h-auto block'
-                }`}
+                className="max-w-none transition-all duration-200"
                 style={{
+                  width: fitMode === 'width' ? '100%' : 'auto',
+                  maxHeight: fitMode === 'screen' ? 'calc(100vh - 190px)' : 'none',
                   transform: `scale(${zoomPercent / 100})`,
                   transformOrigin: 'center center',
                 }}
@@ -746,7 +697,7 @@ function ImageViewer({
       <div className="h-12 bg-white border-t border-slate-200 px-3 sm:px-6 flex items-center justify-between gap-2 shrink-0 shadow-2xs z-10">
         {/* Left: Info badge */}
         <div className="flex items-center gap-2 shrink-0 min-w-0">
-          <span className="px-2 py-0.5 rounded bg-purple-50 border border-purple-200 text-purple-700 font-bold text-[10px] uppercase tracking-wide">
+          <span className="px-2 py-0.5 rounded bg-rose-50 border border-rose-200 text-rose-700 font-bold text-[10px] uppercase tracking-wide">
             Image Lesson
           </span>
           <span className="text-xs font-bold text-slate-800 truncate max-w-[140px] sm:max-w-xs">
@@ -764,9 +715,9 @@ function ImageViewer({
                 setFitMode('screen');
                 setZoomPercent(100);
               }}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors flex items-center gap-1 ${
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors flex items-center gap-1 cursor-pointer ${
                 fitMode === 'screen'
-                  ? 'bg-white text-purple-700 shadow-2xs'
+                  ? 'bg-white text-rose-700 shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
               title="Fit to Screen"
@@ -780,9 +731,9 @@ function ImageViewer({
                 setFitMode('width');
                 setZoomPercent(100);
               }}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors flex items-center gap-1 ${
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors flex items-center gap-1 cursor-pointer ${
                 fitMode === 'width'
-                  ? 'bg-white text-purple-700 shadow-2xs'
+                  ? 'bg-white text-rose-700 shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
               title="Fit to Width"
@@ -798,7 +749,7 @@ function ImageViewer({
               type="button"
               onClick={handleZoomOut}
               disabled={zoomPercent <= 50}
-              className="p-1.5 rounded-lg text-slate-700 hover:bg-slate-100 disabled:opacity-30 transition-colors"
+              className="p-1.5 rounded-lg text-slate-700 hover:bg-slate-100 disabled:opacity-30 transition-colors cursor-pointer"
               title="Zoom Out (-)"
             >
               <ZoomOut className="w-4 h-4" />
@@ -807,7 +758,7 @@ function ImageViewer({
             <select
               value={zoomPercent}
               onChange={(e) => setZoomPercent(Number(e.target.value))}
-              className="h-7 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded px-1.5 focus:outline-none focus:border-purple-600 cursor-pointer"
+              className="h-7 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded px-1.5 focus:outline-none focus:border-rose-600 cursor-pointer"
             >
               <option value={50}>50%</option>
               <option value={75}>75%</option>
@@ -821,7 +772,7 @@ function ImageViewer({
               type="button"
               onClick={handleZoomIn}
               disabled={zoomPercent >= 200}
-              className="p-1.5 rounded-lg text-slate-700 hover:bg-slate-100 disabled:opacity-30 transition-colors"
+              className="p-1.5 rounded-lg text-slate-700 hover:bg-slate-100 disabled:opacity-30 transition-colors cursor-pointer"
               title="Zoom In (+)"
             >
               <ZoomIn className="w-4 h-4" />
@@ -834,7 +785,7 @@ function ImageViewer({
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="p-1.5 rounded-lg text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            className="p-1.5 rounded-lg text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
             title={isFullscreen ? 'Exit Fullscreen (Esc)' : 'Fullscreen (⛶)'}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -862,14 +813,14 @@ function ReadingViewer({ lesson }: { lesson: Lesson }) {
   return (
     <div className="w-full flex-1 flex flex-col items-center justify-start max-w-4xl mx-auto py-4">
       <div className="w-full bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-10 text-slate-800">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-purple-700 mb-2">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-600 mb-2">
           <BookOpen className="w-4 h-4" />
           <span>Reading Lesson • {lesson.durationMinutes} min read</span>
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4">{lesson.title}</h1>
         {lesson.summary && (
-          <div className="bg-purple-50/70 border-l-4 border-purple-600 p-4 rounded-r-lg mb-6">
-            <p className="text-xs sm:text-sm text-purple-950 font-medium leading-relaxed">{lesson.summary}</p>
+          <div className="bg-rose-50/70 border-l-4 border-rose-600 p-4 rounded-r-lg mb-6">
+            <p className="text-xs sm:text-sm text-rose-950 font-medium leading-relaxed">{lesson.summary}</p>
           </div>
         )}
         <div className="prose prose-slate max-w-none text-sm sm:text-base leading-relaxed space-y-4">
@@ -881,7 +832,7 @@ function ReadingViewer({ lesson }: { lesson: Lesson }) {
             <div className="grid sm:grid-cols-2 gap-2.5">
               {lesson.keyTakeaways.map((point, idx) => (
                 <div key={idx} className="flex items-start gap-2 text-xs bg-slate-50 border border-slate-200/80 rounded-lg p-3">
-                  <CheckCircle2 className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                   <span className="text-slate-700 leading-snug">{point}</span>
                 </div>
               ))}
@@ -916,7 +867,7 @@ function QuizViewer({
   if (!lesson.quizQuestions || lesson.quizQuestions.length === 0) {
     return (
       <div className="w-full max-w-2xl mx-auto my-auto bg-white rounded-xl border border-slate-200 p-8 text-center shadow-xs">
-        <HelpCircle className="w-10 h-10 text-purple-600 mx-auto mb-2" />
+        <HelpCircle className="w-10 h-10 text-rose-600 mx-auto mb-2" />
         <h3 className="text-base font-bold text-slate-900">No Assessment Questions Configured</h3>
         <p className="text-xs text-slate-500 mt-1">This quiz checkpoint has not yet been populated with test items.</p>
       </div>
@@ -928,7 +879,7 @@ function QuizViewer({
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50">
           <div>
-            <span className="text-[11px] font-bold tracking-wider uppercase text-purple-700 block">Knowledge Checkpoint</span>
+            <span className="text-[11px] font-bold tracking-wider uppercase text-rose-600 block">Knowledge Checkpoint</span>
             <h2 className="text-sm font-bold text-slate-900 mt-0.5">{lesson.title}</h2>
           </div>
           {quizScore !== null && (
@@ -949,7 +900,7 @@ function QuizViewer({
             return (
               <div key={q.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
                 <div className="flex gap-2.5">
-                  <span className="w-6 h-6 rounded-full bg-purple-700 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                  <span className="w-6 h-6 rounded-full bg-rose-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
                     {qIndex + 1}
                   </span>
                   <span className="text-sm font-semibold text-slate-900 leading-snug">{q.question}</span>
@@ -962,7 +913,7 @@ function QuizViewer({
                       if (optIndex === q.correctIndex) cls = 'bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold';
                       else if (isSel && !isCorrect) cls = 'bg-rose-50 border-rose-300 text-rose-900';
                     } else if (isSel) {
-                      cls = 'bg-purple-50 border-purple-500 text-purple-900 font-semibold';
+                      cls = 'bg-rose-50 border-rose-500 text-rose-950 font-semibold';
                     }
                     return (
                       <label
@@ -975,7 +926,7 @@ function QuizViewer({
                           checked={isSel}
                           onChange={() => setSelectedAnswers((p) => ({ ...p, [q.id]: optIndex }))}
                           disabled={quizSubmitted}
-                          className="accent-purple-600"
+                          className="accent-rose-600"
                         />
                         <span>{opt}</span>
                       </label>
@@ -1003,7 +954,7 @@ function QuizViewer({
               type="button"
               onClick={onSubmitQuiz}
               disabled={Object.keys(selectedAnswers).length < lesson.quizQuestions.length}
-              className="px-5 py-2 text-xs sm:text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-40 rounded-lg shadow-sm transition-colors cursor-pointer"
+              className="px-5 py-2 text-xs sm:text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-40 rounded-lg shadow-sm transition-colors cursor-pointer"
             >
               Submit Checkpoint Answers
             </button>
@@ -1326,7 +1277,6 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
 
   const totalLessonsCount = allLessons.length;
   const completedLessonsCount = completedLessonIds.length;
-  const isCourseCompleted = progressPercent === 100;
 
   // Toggle lesson complete
   const handleToggleLessonComplete = (lessonId: string) => {
@@ -1415,7 +1365,7 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
             href="/learning"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg shadow-sm transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 px-4 py-2 rounded-lg shadow-sm transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Return to My Courses</span>
@@ -1443,47 +1393,56 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
       {/* 1. LEFT COURSE NAVIGATION SIDEBAR (Polished light LMS styling)            */}
       {/* ========================================================================= */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-40 flex flex-col shrink-0 bg-white border-r border-slate-200 transition-all duration-200 ease-in-out ${
-          isSidebarOpen ? 'w-80 translate-x-0' : 'w-0 -translate-x-full md:w-0 md:-translate-x-0 md:hidden'
+        className={`fixed md:static inset-y-0 left-0 z-40 flex flex-col shrink-0 bg-white border-r border-slate-200/90 shadow-sm transition-all duration-200 ease-in-out ${
+          isSidebarOpen ? 'w-[310px] translate-x-0' : 'w-0 -translate-x-full md:w-0 md:-translate-x-0 md:hidden'
         }`}
       >
         {/* Sidebar Header: Back, Course Title & Progress */}
-        <div className="p-4 border-b border-slate-200 bg-white shrink-0">
+        <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 shrink-0">
           <div className="flex items-center justify-between gap-2 mb-3">
             <Link
               href="/learning"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back</span>
+              <span>Back to Courses</span>
             </Link>
             {isAdmin && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                <Shield className="w-3 h-3 text-purple-600" /> Admin
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                <Shield className="w-3 h-3 text-slate-500" /> Admin
               </span>
             )}
             <button
               onClick={() => setIsSidebarOpen(false)}
-              className="p-1 rounded text-slate-400 hover:text-slate-600 md:hidden"
+              className="p-1 rounded text-slate-400 hover:text-slate-600 md:hidden cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <h2 className="text-sm font-bold text-slate-900 leading-snug line-clamp-2" title={course.title}>
-            {course.title}
-          </h2>
+          <div className="flex items-start gap-2.5">
+            <div className="mt-1 w-1 h-7 rounded-full bg-rose-600 shrink-0" />
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600">Course Syllabus</span>
+              <h2 className="mt-0.5 text-sm font-bold text-slate-900 leading-snug line-clamp-2" title={course.title}>
+                {course.title}
+              </h2>
+            </div>
+          </div>
 
-          <div className="mt-3">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1.5">
-              <span>{progressPercent}% Completed</span>
-              <span className="text-slate-500 text-[11px]">
-                {completedLessonsCount}/{totalLessonsCount}
+          <div className="mt-4 rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs">
+            <div className="flex items-baseline justify-between gap-3">
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Progress</span>
+                <span className="block mt-0.5 text-lg font-bold tracking-tight text-slate-900">{progressPercent}%</span>
+              </div>
+              <span className="text-xs font-medium text-slate-500">
+                {completedLessonsCount} of {totalLessonsCount} completed
               </span>
             </div>
-            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div className="mt-2.5 h-2 w-full bg-slate-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full transition-all duration-300"
+                className="h-full bg-gradient-to-r from-rose-600 to-rose-500 rounded-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -1491,20 +1450,20 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
         </div>
 
         {/* Module & Lesson List */}
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-4">
           {modules.map((mod, mIdx) => {
             const isCollapsed = !!collapsedModuleIds[mod.id];
             const completedInModule = mod.lessons.filter((l) => completedLessonIds.includes(l.id)).length;
 
             return (
-              <div key={mod.id} className={mIdx > 0 ? 'pt-3 border-t border-slate-100' : ''}>
+              <div key={mod.id} className={mIdx > 0 ? 'pt-3.5 border-t border-slate-100' : ''}>
                 <button
                   type="button"
                   onClick={() => toggleModule(mod.id)}
                   className="w-full flex items-center justify-between text-left py-1 group cursor-pointer"
                 >
                   <div className="min-w-0 pr-2">
-                    <span className="text-[10px] font-bold tracking-wider uppercase text-purple-700 block">
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-rose-600 block">
                       MODULE {mIdx + 1}
                     </span>
                     <span className="text-xs font-bold text-slate-800 truncate block mt-0.5">
@@ -1535,10 +1494,10 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
                             setActiveLessonId(lesson.id);
                             if (window.innerWidth < 768) setIsSidebarOpen(false);
                           }}
-                          className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer ${
+                          className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-all cursor-pointer ${
                             isActive
-                              ? 'bg-purple-50 text-purple-950 font-semibold border-l-3 border-purple-600'
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 border-l-3 border-transparent'
+                              ? 'bg-rose-50/90 text-rose-950 font-semibold border-l-4 border-rose-600 shadow-2xs'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 border-l-4 border-transparent'
                           }`}
                         >
                           {/* Completion Indicator */}
@@ -1547,7 +1506,7 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </span>
                           ) : isActive ? (
-                            <span className="w-4 h-4 rounded-full bg-purple-600 flex items-center justify-center shrink-0">
+                            <span className="w-4 h-4 rounded-full bg-rose-600 flex items-center justify-center shrink-0">
                               <span className="w-1.5 h-1.5 rounded-full bg-white" />
                             </span>
                           ) : (
@@ -1584,43 +1543,49 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
       {/* ========================================================================= */}
       {/* 2. MAIN COLUMN (Compact Header + Dominant Hero Content + Clean Bottom Nav) */}
       {/* ========================================================================= */}
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-100 relative overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC] relative overflow-hidden">
         {/* Course Header (Compact top bar) */}
-        <header className="h-14 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-4 gap-3 z-10 shadow-2xs">
+        <header className="h-16 shrink-0 bg-white border-b border-slate-200/90 flex items-center justify-between px-4 sm:px-6 gap-3 z-10 shadow-2xs">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <button
               type="button"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors"
+              className="p-2 rounded-xl text-slate-600 hover:text-slate-950 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
               title={isSidebarOpen ? 'Hide Course Sidebar' : 'Show Course Sidebar'}
             >
               <Menu className="w-4 h-4" />
             </button>
 
             <div className="min-w-0">
-              <h1 className="text-sm font-bold text-slate-900 truncate leading-tight">
-                Session {currentIndex + 1}: {activeLesson?.title}
-              </h1>
-              <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-500">
-                <span className="truncate">{activeLesson?.moduleTitle}</span>
-                <span className="w-1 h-1 rounded-full bg-slate-300" />
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {activeLesson?.durationMinutes} min
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 border border-rose-200/60 px-2 py-0.5 rounded">
+                  Session {String(currentIndex + 1).padStart(2, '0')}
                 </span>
+                <span className="hidden sm:inline-flex w-1 h-1 rounded-full bg-slate-300" />
+                <span className="hidden sm:inline text-xs font-medium text-slate-500 truncate">{activeLesson?.moduleTitle}</span>
               </div>
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 truncate leading-tight">
+                {activeLesson?.title}
+              </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            {activeLesson && (
+              <span className="hidden md:flex items-center gap-1 text-xs text-slate-500 font-medium px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200/80">
+                <Clock className="w-3.5 h-3.5 text-slate-400" /> {activeLesson.durationMinutes} min
+              </span>
+            )}
+
             {/* Single Source of Truth for Mark Complete */}
             {activeLesson && (
               <button
                 type="button"
                 onClick={() => handleToggleLessonComplete(activeLesson.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                   completedLessonIds.includes(activeLesson.id)
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:text-slate-900 shadow-2xs'
                 }`}
               >
                 <CheckCircle2
@@ -1628,7 +1593,7 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
                     completedLessonIds.includes(activeLesson.id) ? 'text-emerald-600' : 'text-slate-400'
                   }`}
                 />
-                <span>{completedLessonIds.includes(activeLesson.id) ? 'Completed' : 'Mark Complete'}</span>
+                <span className="hidden sm:inline">{completedLessonIds.includes(activeLesson.id) ? 'Completed' : 'Mark Complete'}</span>
               </button>
             )}
 
@@ -1636,7 +1601,7 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
             <button
               type="button"
               onClick={() => setIsReviewModalOpen(true)}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-amber-500 hover:bg-slate-100 transition-colors"
+              className="p-2 rounded-xl text-slate-400 hover:text-amber-500 hover:bg-slate-50 border border-slate-200/80 transition-colors cursor-pointer"
               title="Course Feedback & Review"
             >
               <Star className="w-4 h-4" />
@@ -1646,34 +1611,29 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
 
         {/* Feedback Alert Banner */}
         {feedback && (
-          <div className="mx-4 mt-2 px-3 py-2 bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-800 rounded-lg flex items-center gap-2 shadow-xs shrink-0">
+          <div className="mx-4 sm:mx-6 mt-3 px-3.5 py-2.5 bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-800 rounded-xl flex items-center gap-2 shadow-xs shrink-0">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{feedback}</span>
           </div>
         )}
 
         <main
-          className={`flex-1 min-h-0 flex flex-col bg-[#F8FAFC] relative ${
+          className={`flex-1 min-h-0 flex flex-col bg-slate-950 relative ${
             activeLesson?.type === 'pdf' ||
             activeLesson?.type === 'image' ||
             activeLesson?.type === 'video' ||
             (!activeLesson?.type && activeLesson?.fileUrl?.endsWith('.pdf'))
               ? 'overflow-hidden p-0'
-              : 'overflow-y-auto p-2 sm:p-4'
+              : 'overflow-y-auto p-4 sm:p-6 bg-[#F8FAFC]'
           }`}
         >
           {activeLesson ? (
             <>
-              {/* PDF Document Viewer (Uses 100% available viewport space) */}
+              {/* PDF Document Viewer */}
               {(activeLesson.type === 'pdf' ||
                 (!activeLesson.type && activeLesson.fileUrl?.endsWith('.pdf'))) && (
                 <div className="w-full h-full flex-1 min-h-0 flex flex-col">
-                  <PdfSlidePresentationViewer
-                    lesson={activeLesson}
-                    courseTitle={course.title}
-                    onNextLesson={hasNext ? handleNextLesson : undefined}
-                    hasNextLesson={hasNext}
-                  />
+                  <PdfSlidePresentationViewer lesson={activeLesson} courseTitle={course.title} />
                 </div>
               )}
 
@@ -1727,12 +1687,12 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
         {/* ========================================================================= */}
         {/* 4. CLEAN BOTTOM NAVIGATION BAR ([← Previous] ... [Next Lesson →])        */}
         {/* ========================================================================= */}
-        <footer className="h-14 shrink-0 bg-white border-t border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-4 z-10 shadow-2xs">
+        <footer className="h-16 shrink-0 bg-white border-t border-slate-200/90 px-4 sm:px-7 flex items-center justify-between gap-4 z-10 shadow-2xs">
           <button
             type="button"
             onClick={handlePreviousLesson}
             disabled={!hasPrevious}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-35 disabled:cursor-not-allowed transition-all cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
             <span>Previous Lesson</span>
@@ -1754,7 +1714,7 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
               <button
                 type="button"
                 onClick={handleNextLesson}
-                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-white bg-[#7C3AED] hover:bg-[#6D28D9] shadow-xs hover:shadow transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all cursor-pointer"
               >
                 <span>Next Lesson</span>
                 <ChevronRight className="w-4 h-4" />
@@ -1767,10 +1727,10 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
                     handleToggleLessonComplete(activeLesson.id);
                   }
                 }}
-                className={`inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-white transition-all cursor-pointer shadow-xs hover:shadow ${
+                className={`inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white transition-all cursor-pointer shadow-sm ${
                   activeLesson && completedLessonIds.includes(activeLesson.id)
                     ? 'bg-emerald-600 hover:bg-emerald-700'
-                    : 'bg-[#7C3AED] hover:bg-[#6D28D9]'
+                    : 'bg-rose-600 hover:bg-rose-700'
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" />
@@ -1785,12 +1745,13 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
         </footer>
       </div>
 
+
       {/* Review Modal */}
       <CourseReviewModal
         isOpen={isReviewModalOpen}
         onClose={() => setIsReviewModalOpen(false)}
         courseTitle={course.title}
-        onSubmitReview={(newRev) => {
+        onSubmitReview={() => {
           setFeedback('Thank you! Your course review has been submitted.');
           setTimeout(() => setFeedback(null), 3000);
         }}
