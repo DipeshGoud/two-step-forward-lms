@@ -384,17 +384,14 @@ function VideoViewer({
         </div>
       )}
 
-      {/* Main Video Theater Stage */}
-      <div className="flex-1 w-full min-h-0 flex items-center justify-center p-3 sm:p-6 lg:p-8 overflow-hidden relative bg-slate-950">
-        <div
-          className="relative w-full max-w-6xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800/80 flex items-center justify-center"
-          style={{ maxHeight: isFullscreen ? 'calc(100vh - 100px)' : 'calc(100vh - 170px)' }}
-        >
+      {/* Main Video Theater Stage - Edge-to-Edge Immersive Player */}
+      <div className="flex-1 w-full min-h-0 flex items-center justify-center overflow-hidden relative bg-black">
+        <div className="relative w-full h-full flex items-center justify-center bg-black">
           {isYouTube ? (
             <iframe
               src={getYouTubeEmbed(lesson.fileUrl || '')}
               title={lesson.title}
-              className="w-full h-full"
+              className="w-full h-full border-0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
