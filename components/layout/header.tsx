@@ -1,31 +1,26 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Search, Bell, User, Shield } from 'lucide-react';
-import { NotificationDrawer } from './notification-drawer';
+import { Search, User, Shield } from 'lucide-react';
 import { UserDrawer } from './user-drawer';
-import { LMSNotification } from '@/types/lms';
 import { UserProfile } from '@/types/auth';
 import { isUserAdmin } from '@/lib/data/adminStore';
 import BrandLogo from '@/components/ui/BrandLogo';
 
 interface HeaderProps {
   user?: UserProfile | null;
-  notifications?: LMSNotification[];
 }
 
-export function Header({ user, notifications = [] }: HeaderProps) {
+export function Header({ user }: HeaderProps) {
   const pathname = usePathname();
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
 
   const navItems = [
     { label: 'Learning', href: '/learning' },
   ];
-
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
     <>
@@ -63,7 +58,7 @@ export function Header({ user, notifications = [] }: HeaderProps) {
               </nav>
             </div>
 
-            {/* Right: Search, Notifications, Profile */}
+            {/* Right: Search, Profile */}
             <div className="flex items-center gap-4">
               {/* Search */}
               <button
@@ -72,19 +67,6 @@ export function Header({ user, notifications = [] }: HeaderProps) {
               >
                 <Search className="w-3.5 h-3.5 stroke-[2]" />
                 <span>Search</span>
-              </button>
-
-              {/* Notifications */}
-              <button
-                type="button"
-                onClick={() => setIsNotificationOpen(true)}
-                className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded transition-colors cursor-pointer"
-                aria-label="Notifications"
-              >
-                <Bell className="w-4 h-4 stroke-[1.8]" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)] ring-2 ring-white" />
-                )}
               </button>
 
               {/* Admin Panel Link */}
@@ -105,8 +87,12 @@ export function Header({ user, notifications = [] }: HeaderProps) {
                 className="p-0.5 rounded-full hover:ring-2 hover:ring-slate-200 transition-all cursor-pointer"
                 aria-label="User Profile"
               >
-                <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
-                  <User className="w-4 h-4 text-slate-400 stroke-[1.8]" />
+                <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden">
+                  {user?.avatar_url ? (
+                    <img src={user.avatar_url} alt={user.full_name || 'User'} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-4 h-4 text-slate-400 stroke-[1.8]" />
+                  )}
                 </div>
               </button>
             </div>
@@ -136,13 +122,7 @@ export function Header({ user, notifications = [] }: HeaderProps) {
         )}
       </header>
 
-      {/* Drawers */}
-      <NotificationDrawer
-        isOpen={isNotificationOpen}
-        onClose={() => setIsNotificationOpen(false)}
-        notifications={notifications}
-      />
-
+      {/* User Profile Drawer */}
       <UserDrawer
         isOpen={isUserDrawerOpen}
         onClose={() => setIsUserDrawerOpen(false)}

@@ -48,54 +48,46 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
         // If profile is still not in DB, auto-provision it
         if (!resolvedProfile) {
-          const defaultOrgId = 'a0000000-0000-0000-0000-000000000001';
-          
-          // Ensure organization exists
-          await admin.from('organizations').upsert({
-            id: defaultOrgId,
-            name: 'TwoStep Forward Educational Services',
-            slug: 'twostep-forward',
-            brand_config: { brand: 'TwoStep Forward' }
-          }, { onConflict: 'slug' });
+          const DEFAULT_ORG_SLUG = 'twostep-forward';
+
+          const { data: defaultOrg } = await admin
+            .from('organizations')
+            .select('id')
+            .eq('slug', DEFAULT_ORG_SLUG)
+            .maybeSingle();
+
+          if (!defaultOrg?.id) {
+            console.warn('Default organization is not configured; cannot auto-provision profile.');
+            return null;
+          }
+          const defaultOrgId = String(defaultOrg.id);
+
+          // Bootstrap: the first user ever becomes org_admin so the platform is
+          // usable. Everyone else joins as a learner and must be promoted by an admin.
+          const { count: adminCount } = await admin
+            .from('profiles')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', defaultOrgId)
+            .in('role', ['super_admin', 'org_admin']);
+          const provisionedRole: UserRole = adminCount === 0 ? 'org_admin' : 'learner';
 
           const userEmail = user.email || '';
-          const fullName = (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || (userEmail ? userEmail.split('@')[0] : 'Admin User');
+          const fullName = (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || (userEmail ? userEmail.split('@')[0] : 'New User');
 
           const { data: newProfile } = await admin.from('profiles').upsert({
             id: user.id,
             organization_id: defaultOrgId,
             email: userEmail,
             full_name: fullName,
-            role: 'super_admin',
+            role: provisionedRole,
             is_active: true,
           }, { onConflict: 'id' }).select('*').maybeSingle();
 
-          resolvedProfile = newProfile || {
-            id: user.id,
-            organization_id: defaultOrgId,
-            email: userEmail,
-            full_name: fullName,
-            avatar_url: null,
-            role: 'super_admin',
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
+          resolvedProfile = newProfile ?? null;
         }
       } catch (err) {
         console.warn('Auto-provision fallback in getAuthContext:', err);
-        const userEmail = user.email || '';
-        resolvedProfile = {
-          id: user.id,
-          organization_id: 'a0000000-0000-0000-0000-000000000001',
-          email: userEmail,
-          full_name: (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || (userEmail ? userEmail.split('@')[0] : 'Admin User'),
-          avatar_url: null,
-          role: 'super_admin',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
+        return null;
       }
     }
 

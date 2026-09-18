@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   BookOpen,
@@ -18,7 +19,6 @@ import {
   Download,
   RotateCcw,
   ShieldAlert,
-  Star,
   Check,
   Shield,
   Volume2,
@@ -28,6 +28,7 @@ import {
   ZoomOut,
   Menu,
   X,
+  Award,
   HelpCircle,
   ImageIcon,
   PictureInPicture2,
@@ -36,7 +37,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useAdminStore, AdminCourse, CourseLessonType, isUserAdmin } from '@/lib/data/adminStore';
-import { CourseReviewModal } from './CourseReviewModal';
+import { LogoLoader } from '@/components/ui/logo-loader';
+import { CourseCertificateModal } from './CourseCertificateModal';
 import PdfSlidePresentationViewer from './PdfSlidePresentationViewer';
 
 export interface Lesson {
@@ -61,14 +63,6 @@ export interface Lesson {
   }>;
 }
 
-export interface Review {
-  id: string;
-  authorName: string;
-  badge: string;
-  rating: number;
-  timestamp: string;
-  comment: string;
-}
 
 export interface Module {
   id: string;
@@ -100,97 +94,6 @@ function getYouTubeEmbed(url: string) {
 }
 
 // -------------------------------------------------------------------------------------------------
-// DEFAULT FALLBACK ASSETS (High-resolution, self-contained educational materials)
-// -------------------------------------------------------------------------------------------------
-const DEFAULT_FALLBACK_IMAGE =
-  'data:image/svg+xml;charset=utf-8,' +
-  encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
-  <rect width="1200" height="800" fill="#0F172A"/>
-  <defs>
-    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#7C3AED"/>
-      <stop offset="100%" stop-color="#4F46E5"/>
-    </linearGradient>
-    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1E293B"/>
-      <stop offset="100%" stop-color="#0F172A"/>
-    </linearGradient>
-  </defs>
-  
-  <!-- Header Banner -->
-  <rect x="50" y="40" width="1100" height="95" rx="14" fill="url(#primaryGrad)"/>
-  <text x="90" y="92" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold">TwoStep Forward • Operational Safety Architecture</text>
-  <text x="90" y="118" fill="#E2E8F0" font-family="system-ui, -apple-system, sans-serif" font-size="14">Institutional Protocol &amp; Multi-Tier Hazard Prevention Framework</text>
-  
-  <!-- Tier 1 Column -->
-  <rect x="50" y="165" width="340" height="440" rx="14" fill="url(#cardGrad)" stroke="#334155" stroke-width="2"/>
-  <rect x="70" y="185" width="300" height="42" rx="8" fill="#2563EB"/>
-  <text x="90" y="212" fill="#FFFFFF" font-family="system-ui, sans-serif" font-size="15" font-weight="bold">Tier 1: Preventive Routine</text>
-  
-  <circle cx="90" cy="265" r="7" fill="#60A5FA"/>
-  <text x="110" y="270" fill="#F1F5F9" font-family="system-ui, sans-serif" font-size="14" font-weight="500">Daily Campus Inspection</text>
-  <text x="110" y="290" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="12">Pre-operational perimeter check</text>
-
-  <circle cx="90" cy="330" r="7" fill="#60A5FA"/>
-  <text x="110" y="335" fill="#F1F5F9" font-family="system-ui, sans-serif" font-size="14" font-weight="500">Checklist Verification</text>
-  <text x="110" y="355" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="12">Fire exit &amp; pathway clearance</text>
-
-  <circle cx="90" cy="395" r="7" fill="#60A5FA"/>
-  <text x="110" y="400" fill="#F1F5F9" font-family="system-ui, sans-serif" font-size="14" font-weight="500">Hazard Early-Detection</text>
-  <text x="110" y="420" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="12">Structural &amp; electrical scans</text>
-
-  <rect x="70" y="525" width="300" height="60" rx="8" fill="#1E293B" stroke="#475569"/>
-  <text x="90" y="560" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="13">Frequency: Every 4 Hours</text>
-
-  <!-- Tier 2 Column -->
-  <rect x="430" y="165" width="340" height="440" rx="14" fill="url(#cardGrad)" stroke="#7C3AED" stroke-width="2"/>
-  <rect x="450" y="185" width="300" height="42" rx="8" fill="#7C3AED"/>
-  <text x="470" y="212" fill="#FFFFFF" font-family="system-ui, sans-serif" font-size="15" font-weight="bold">Tier 2: Active Response</text>
-  
-  <circle cx="470" cy="265" r="7" fill="#A78BFA"/>
-  <text x="490" y="270" fill="#F1F5F9" font-family="system-ui, sans-serif" font-size="14" font-weight="500">Immediate Hazard Isolation</text>
-  <text x="490" y="290" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="12">Secure zone &amp; prevent access</text>
-
-  <circle cx="470" cy="330" r="7" fill="#A78BFA"/>
-  <text x="490" y="335" fill="#F1F5F9" font-family="system-ui, sans-serif" font-size="14" font-weight="500">Safety Lead Notification</text>
-  <text x="490" y="355" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="12">Designated officer alert dispatch</text>
-
-  <circle cx="470" cy="395" r="7" fill="#A78BFA"/>
-  <text x="490" y="400" fill="#F1F5F9" font-family="system-ui, sans-serif" font-size="14" font-weight="500">Shift Incident Logging</text>
-  <text x="490" y="420" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="12">Document before shift handoff</text>
-
-  <rect x="450" y="525" width="300" height="60" rx="8" fill="#1E293B" stroke="#6D28D9"/>
-  <text x="470" y="560" fill="#C4B5FD" font-family="system-ui, sans-serif" font-size="13">Timeline: Same Shift Resolution</text>
-
-  <!-- Tier 3 Column -->
-  <rect x="810" y="165" width="340" height="440" rx="14" fill="url(#cardGrad)" stroke="#334155" stroke-width="2"/>
-  <rect x="830" y="185" width="300" height="42" rx="8" fill="#059669"/>
-  <text x="850" y="212" fill="#FFFFFF" font-family="system-ui, sans-serif" font-size="15" font-weight="bold">Tier 3: Oversight &amp; Audit</text>
-  
-  <circle cx="850" cy="265" r="7" fill="#34D399"/>
-  <text x="870" y="270" fill="#F1F5F9" font-family="system-ui, sans-serif" font-size="14" font-weight="500">Post-Incident Debrief</text>
-  <text x="870" y="290" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="12">Root cause investigation</text>
-
-  <circle cx="850" cy="330" r="7" fill="#34D399"/>
-  <text x="870" y="335" fill="#F1F5F9" font-family="system-ui, sans-serif" font-size="14" font-weight="500">Corrective Action Filing</text>
-  <text x="870" y="355" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="12">Protocol update &amp; staff notice</text>
-
-  <circle cx="850" cy="395" r="7" fill="#34D399"/>
-  <text x="870" y="400" fill="#F1F5F9" font-family="system-ui, sans-serif" font-size="14" font-weight="500">Quarterly Compliance Review</text>
-  <text x="870" y="420" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="12">Governance board audit filing</text>
-
-  <rect x="830" y="525" width="300" height="60" rx="8" fill="#1E293B" stroke="#059669"/>
-  <text x="850" y="560" fill="#A7F3D0" font-family="system-ui, sans-serif" font-size="13">Review: Weekly &amp; Quarterly</text>
-
-  <!-- Footer Banner -->
-  <rect x="50" y="630" width="1100" height="110" rx="14" fill="#1E293B" stroke="#334155"/>
-  <text x="80" y="668" fill="#38BDF8" font-family="system-ui, sans-serif" font-size="15" font-weight="bold">Standard Operating Procedure Mandatory Notice:</text>
-  <text x="80" y="700" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="13">All safety procedures must comply with regional institutional safety standards. Document all deviations in the central compliance register.</text>
-</svg>
-`);
-
-// -------------------------------------------------------------------------------------------------
 // VIDEO VIEWER COMPONENT (Theater-scale 16:9 LMS Video Player with Full Controls)
 // -------------------------------------------------------------------------------------------------
 function VideoViewer({
@@ -219,8 +122,7 @@ function VideoViewer({
   const [showControls, setShowControls] = useState(true);
 
   const isYouTube = lesson.fileUrl ? isYouTubeUrl(lesson.fileUrl) : false;
-  // Fallback demo video stream if no custom url is provided
-  const videoSource = lesson.fileUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+  const hasVideoSource = Boolean(lesson.fileUrl);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -360,33 +262,37 @@ function VideoViewer({
     <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className={`flex-1 w-full min-h-0 flex flex-col bg-slate-950 relative select-none overflow-hidden ${
+      className={`flex-1 w-full min-h-0 flex items-center justify-center bg-black relative select-none overflow-hidden ${
         isFullscreen ? 'fixed inset-0 z-[100]' : ''
       }`}
     >
-      {/* Fullscreen Header */}
+      {/* Fullscreen Floating Header Overlay */}
       {isFullscreen && (
-        <div className="h-12 bg-slate-950/90 border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between gap-4 shrink-0 text-white z-20 backdrop-blur-md">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            <span className="text-xs font-bold text-slate-100 truncate">
+        <div
+          className={`absolute top-0 left-0 right-0 z-30 bg-gradient-to-b from-black/90 via-black/50 to-transparent p-4 sm:p-6 pb-14 flex items-center justify-between gap-4 text-white pointer-events-none transition-opacity duration-300 ${
+            showControls || !isPlaying ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0 pointer-events-auto">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse shrink-0 shadow-sm" />
+            <span className="text-xs sm:text-sm font-semibold text-slate-100 truncate drop-shadow-md">
               {courseTitle ? `${courseTitle} • ` : ''}
               {lesson.title}
             </span>
           </div>
           <button
+            type="button"
             onClick={toggleFullscreen}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/20 transition-colors pointer-events-auto cursor-pointer"
             title="Exit Fullscreen (Esc)"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
       )}
 
-      {/* Main Video Theater Stage - Edge-to-Edge Immersive Player */}
-      <div className="flex-1 w-full min-h-0 flex items-center justify-center overflow-hidden relative bg-black">
-        <div className="relative w-full h-full flex items-center justify-center bg-black">
+      {/* Main Video Stage - Edge-to-Edge Full Aspect Player */}
+      <div className="w-full h-full flex items-center justify-center overflow-hidden relative bg-black">
           {isYouTube ? (
             <iframe
               src={getYouTubeEmbed(lesson.fileUrl || '')}
@@ -415,11 +321,19 @@ function VideoViewer({
                 <RotateCcw className="w-3.5 h-3.5" /> Try Again
               </button>
             </div>
+          ) : !hasVideoSource ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center text-slate-300">
+              <AlertCircle className="w-10 h-10 text-slate-500 mb-3" />
+              <h3 className="text-sm font-bold text-white">No video uploaded yet.</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                This video lesson has not been published with a media file. Please check back later.
+              </p>
+            </div>
           ) : (
             <>
               <video
                 ref={videoRef}
-                src={videoSource}
+                src={lesson.fileUrl}
                 className="w-full h-full object-contain bg-black cursor-pointer"
                 playsInline
                 preload="metadata"
@@ -558,10 +472,8 @@ function VideoViewer({
           )}
         </div>
       </div>
-    </div>
-
-  );
-}
+    );
+  }
 
 // -------------------------------------------------------------------------------------------------
 // IMAGE VIEWER COMPONENT (Full Viewport Stage with Smooth Zoom & Controls)
@@ -582,7 +494,8 @@ function ImageViewer({
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
 
-  const imageSrc = lesson.fileUrl || DEFAULT_FALLBACK_IMAGE;
+  const hasImageSource = Boolean(lesson.fileUrl);
+  const imageSrc = lesson.fileUrl;
 
   useEffect(() => {
     const onFs = () => setIsFullscreen(!!document.fullscreenElement);
@@ -608,6 +521,7 @@ function ImageViewer({
   };
 
   const handleDownload = () => {
+    if (!imageSrc) return;
     const link = document.createElement('a');
     link.href = imageSrc;
     link.download = lesson.fileName || 'learning-diagram.png';
@@ -664,6 +578,14 @@ function ImageViewer({
             >
               <RotateCcw className="w-3.5 h-3.5" /> Try Again
             </button>
+          </div>
+        ) : !hasImageSource ? (
+          <div className="my-auto flex flex-col items-center justify-center gap-3 bg-white rounded-xl border border-slate-200 p-8 text-center max-w-sm shadow-xs">
+            <AlertCircle className="w-8 h-8 text-slate-400" />
+            <h3 className="text-sm font-bold text-slate-900">No image uploaded yet.</h3>
+            <p className="text-xs text-slate-500">
+              This image lesson has not been published with a media file. Please check back later.
+            </p>
           </div>
         ) : (
           <div className="my-auto flex flex-col items-center py-2 transition-transform duration-150 ease-out">
@@ -850,6 +772,7 @@ function QuizViewer({
   setSelectedAnswers,
   quizSubmitted,
   quizScore,
+  passingScore = 60,
   onSubmitQuiz,
   onResetQuiz,
 }: {
@@ -858,6 +781,7 @@ function QuizViewer({
   setSelectedAnswers: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   quizSubmitted: boolean;
   quizScore: number | null;
+  passingScore?: number;
   onSubmitQuiz: () => void;
   onResetQuiz: () => void;
 }) {
@@ -882,10 +806,10 @@ function QuizViewer({
           {quizScore !== null && (
             <span
               className={`text-xs font-bold px-3 py-1.5 rounded-full border shrink-0 ${
-                quizScore >= 60 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                quizScore >= passingScore ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}
             >
-              {quizScore}% {quizScore >= 60 ? '• Passed' : '• Try Again'}
+              {quizScore}% {quizScore >= passingScore ? '• Passed' : '• Try Again'}
             </span>
           )}
         </div>
@@ -964,7 +888,7 @@ function QuizViewer({
               <RotateCcw className="w-4 h-4" /> Retake Quiz
             </button>
           )}
-          <span className="text-xs text-slate-400">Score &gt;= 60% automatically marks lesson complete</span>
+          <span className="text-xs text-slate-400">Score &gt;= {passingScore}% automatically marks lesson complete</span>
         </div>
       </div>
     </div>
@@ -975,28 +899,28 @@ function QuizViewer({
 // MAIN COURSE PLAYER COMPONENT (Content-First LMS Layout)
 // -------------------------------------------------------------------------------------------------
 export function CoursePlayer({ courseId }: CoursePlayerProps) {
-  const { store, updateLearnerCourseProgress } = useAdminStore();
+  const router = useRouter();
+  const { store, isHydrated, updateLearnerCourseProgress, submitQuizAttempt } = useAdminStore();
 
   // Retrieve course from store
+  const foundCourse = store.courses.find((c) => c.id === courseId);
   const course: AdminCourse = useMemo(() => {
     return (
-      store.courses.find((c) => c.id === courseId) || {
+      foundCourse || {
         id: courseId,
         title: 'TwoStep Forward Training Program',
         totalLessons: 4,
         durationMinutes: 180,
-        rating: 5.0,
         isPublished: true,
         enrolledCount: 3,
         thumbnailUrl: null,
       }
     );
-  }, [store.courses, courseId]);
+  }, [foundCourse, courseId]);
 
-  // Current active learner
+  // Current active learner — strictly resolved from the authenticated session
   const activeLearner = useMemo(() => {
-    const currentId = store.currentUserId;
-    return store.users.find((u) => u.id === currentId) || store.users[0];
+    return store.users.find((u) => u.id === store.currentUserId);
   }, [store.users, store.currentUserId]);
 
   const isAdmin = isUserAdmin(activeLearner?.role);
@@ -1063,157 +987,8 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
       }));
     }
 
-    return [
-      {
-        id: 'mod-1',
-        title: 'Foundations & Core Principles',
-        lessons: [
-          {
-            id: `${course.id}-l1`,
-            title: 'Overview & Essential Principles',
-            durationMinutes: 20,
-            type: 'video' as const,
-            moduleId: 'mod-1',
-            moduleTitle: 'Module 1: Foundations & Core Principles',
-            summary: 'Understand the foundational framework, ethical considerations, and organizational standards.',
-            content: `Welcome to ${course.title}. This foundational module establishes standard practices, compliance benchmarks, and institutional responsibilities for personnel.`,
-            keyTakeaways: [
-              'Core organizational responsibilities and reporting channels',
-              'Legal mandates, ethical guidelines, and institutional standards',
-              'Early hazard identification and proactive mitigation techniques',
-            ],
-          },
-          {
-            id: `${course.id}-l2`,
-            title: 'Operational Guidelines & Presentation Slides',
-            durationMinutes: 25,
-            type: 'pdf' as const,
-            fileName: 'Operational_Guidelines_Slides.pdf',
-            fileSize: '3.8 MB',
-            moduleId: 'mod-1',
-            moduleTitle: 'Module 1: Foundations & Core Principles',
-            summary: 'Review the high-resolution presentation slides covering standard operating procedures and compliance checks.',
-            content: `Master the standard operating procedures and compliance guidelines presented in these curriculum slides.`,
-            keyTakeaways: [
-              'Daily verification protocols and campus checklist routines',
-              'Documenting observations and incident logs according to policy',
-              'Cross-departmental collaboration for preventive oversight',
-            ],
-          },
-        ],
-      },
-      {
-        id: 'mod-2',
-        title: 'Practical Implementation & Scenarios',
-        lessons: [
-          {
-            id: `${course.id}-l3`,
-            title: 'Campus Safety Architecture & Diagram',
-            durationMinutes: 15,
-            type: 'image' as const,
-            fileName: 'Safety_Architecture_Flowchart.png',
-            fileSize: '1.4 MB',
-            moduleId: 'mod-2',
-            moduleTitle: 'Module 2: Practical Implementation & Scenarios',
-            summary: 'Detailed visual breakdown of the multi-tier hazard prevention framework and response pathways.',
-            content: `Study the tiered operational safety architecture diagram. Master the distinct roles across Tier 1 (Routine), Tier 2 (Active Response), and Tier 3 (Oversight & Audit).`,
-            keyTakeaways: [
-              'Clear demarcation between preventive routines and immediate containment',
-              'Escalation triggers and safety lead contact protocols',
-              'Same-shift logging and documentation requirements',
-            ],
-          },
-          {
-            id: `${course.id}-l4`,
-            title: 'Campus Guidelines & Deep Dive Protocols',
-            durationMinutes: 30,
-            type: 'reading' as const,
-            moduleId: 'mod-2',
-            moduleTitle: 'Module 2: Practical Implementation & Scenarios',
-            summary: 'In-depth reference reading of campus workflows, reporting standards, and documentation routines.',
-            content: `Detailed operational protocols must be followed during daily interactions and supervisory roles. This section details routine audits, documentation routines, and escalation protocols for campus environments. Ensure that all incidents are documented within the same shift.`,
-            keyTakeaways: [
-              'De-escalation tactics and immediate protective interventions',
-              'Standard documentation and incident logging timelines',
-              'Collaborative communication protocols with administrative leadership',
-            ],
-          },
-          {
-            id: `${course.id}-l5`,
-            title: 'Case Study & Crisis Response Scenarios',
-            durationMinutes: 40,
-            type: 'video' as const,
-            moduleId: 'mod-2',
-            moduleTitle: 'Module 2: Practical Implementation & Scenarios',
-            summary: 'Real-world incident reviews, response drills, and step-by-step resolution pathways.',
-            content: `Examine real-world case scenarios from diverse educational settings. Review how standard procedures were applied to resolve complex situational dilemmas promptly and transparently.`,
-            keyTakeaways: [
-              'De-escalation tactics and immediate protective interventions',
-              'Communication protocols with campus administration and guardians',
-              'Post-incident reviews and continuous protocol enhancement',
-            ],
-          },
-        ],
-      },
-      {
-        id: 'mod-3',
-        title: 'Knowledge Evaluation & Checkpoint',
-        lessons: [
-          {
-            id: `${course.id}-l6`,
-            title: 'Knowledge Checkpoint & Assessment Quiz',
-            durationMinutes: 20,
-            type: 'quiz' as const,
-            moduleId: 'mod-3',
-            moduleTitle: 'Module 3: Knowledge Evaluation & Checkpoint',
-            summary: 'Demonstrate comprehension of critical principles and practical incident procedures.',
-            content: `Complete this knowledge evaluation checkpoint to verify your mastery of the curriculum topics. A passing grade certifies your readiness to implement these standards.`,
-            keyTakeaways: [
-              'Verification of compliance readiness',
-              'Instant feedback and rationale for all evaluation scenarios',
-            ],
-            quizQuestions: [
-              {
-                id: 'q1',
-                question: 'What is the mandatory timeframe for initiating documentation upon noticing a campus compliance concern?',
-                options: [
-                  'Within 24 hours of the occurrence',
-                  'Immediately, but no later than the conclusion of the operational shift',
-                  'At the end of the calendar month review',
-                  'Only when requested by a supervisory audit',
-                ],
-                correctIndex: 1,
-                explanation: 'Documentation must begin immediately or within the same operational shift to preserve factual accuracy and trigger prompt protective actions.',
-              },
-              {
-                id: 'q2',
-                question: 'Which of the following is the primary objective of routine preventive campus inspections?',
-                options: [
-                  'Assigning penalties to faculty members',
-                  'Proactively identifying and neutralizing hazards before harm occurs',
-                  'Replacing annual third-party audits',
-                  'Reducing scheduled instructional hours',
-                ],
-                correctIndex: 1,
-                explanation: 'Preventive inspections exist primarily to identify and eliminate safety or compliance risks before they impact learners or faculty.',
-              },
-              {
-                id: 'q3',
-                question: 'When escalating an emergency protocol, who must be notified first per TwoStep Forward guidelines?',
-                options: [
-                  'The Designated Campus Safety Lead & School Authority',
-                  'External media relations representatives',
-                  'Other educational branch affiliates',
-                  'General staff community forums',
-                ],
-                correctIndex: 0,
-                explanation: 'The Designated Campus Safety Lead and campus administrator are the authoritative first points of contact for all escalated safety concerns.',
-              },
-            ],
-          },
-        ],
-      },
-    ];
+    // Courses without a persisted curriculum have nothing to play back yet.
+    return [];
   }, [course]);
 
   // Flattened lessons list
@@ -1227,8 +1002,15 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
     setCollapsedModuleIds((prev) => ({ ...prev, [modId]: !prev[modId] }));
   };
 
-  // Completed lessons tracking
+  // Completed lessons tracking - seamlessly checks DB granular progress first
   const initialCompletedIds = useMemo(() => {
+    // 1. Precise completed lesson IDs from PostgreSQL lesson_progress table
+    const dbCompletedIds = store.completedLessons?.[course.id];
+    if (dbCompletedIds && dbCompletedIds.length > 0) {
+      return dbCompletedIds;
+    }
+
+    // 2. Fallback to assignment progress percentage
     if (!effectiveAssignment) return [];
     if (effectiveAssignment.progress === 100) return allLessons.map((l) => l.id);
     if (effectiveAssignment.progress > 0) {
@@ -1236,9 +1018,22 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
       return allLessons.slice(0, count).map((l) => l.id);
     }
     return [];
-  }, [effectiveAssignment, allLessons]);
+  }, [store.completedLessons, course.id, effectiveAssignment, allLessons]);
 
-  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>(initialCompletedIds);
+  // User-toggled lesson completion overrides
+  const [toggledLessonStatus, setToggledLessonStatus] = useState<Record<string, boolean>>({});
+
+  const completedLessonIds = useMemo(() => {
+    const baseSet = new Set(initialCompletedIds);
+    Object.entries(toggledLessonStatus).forEach(([id, isDone]) => {
+      if (isDone) {
+        baseSet.add(id);
+      } else {
+        baseSet.delete(id);
+      }
+    });
+    return Array.from(baseSet);
+  }, [initialCompletedIds, toggledLessonStatus]);
 
   // Active selected lesson
   const [activeLessonId, setActiveLessonId] = useState<string>(allLessons[0]?.id || '');
@@ -1261,9 +1056,11 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<number | null>(null);
+  const [quizPassingScore, setQuizPassingScore] = useState(60);
 
   // Modals state
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isCertificateModalOpen, setIsCertificateModalOpen] = useState(false);
+  const [certificateNumber, setCertificateNumber] = useState<string | undefined>(undefined);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   // Progress metrics
@@ -1277,25 +1074,41 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
 
   // Toggle lesson complete
   const handleToggleLessonComplete = (lessonId: string) => {
-    let updated: string[];
-    if (completedLessonIds.includes(lessonId)) {
-      updated = completedLessonIds.filter((id) => id !== lessonId);
-    } else {
-      updated = [...completedLessonIds, lessonId];
-    }
-    setCompletedLessonIds(updated);
+    const isCurrentlyComplete = completedLessonIds.includes(lessonId);
+    const willBeComplete = !isCurrentlyComplete;
 
-    const newProgress = Math.round((updated.length / allLessons.length) * 100);
+    setToggledLessonStatus((prev) => ({
+      ...prev,
+      [lessonId]: willBeComplete,
+    }));
+
+    const nextCount = willBeComplete
+      ? completedLessonIds.length + (isCurrentlyComplete ? 0 : 1)
+      : Math.max(0, completedLessonIds.length - (isCurrentlyComplete ? 1 : 0));
+
+    const newProgress = allLessons.length > 0 ? Math.round((nextCount / allLessons.length) * 100) : 0;
     if (activeLearner) {
-      updateLearnerCourseProgress(activeLearner.id, course.id, newProgress);
+      updateLearnerCourseProgress(activeLearner.id, course.id, newProgress, lessonId, willBeComplete)
+        .then((result) => {
+          if (result.certificateNumber) setCertificateNumber(result.certificateNumber);
+        })
+        .catch((err: unknown) => {
+          console.warn('Progress sync warning:', err);
+        });
     }
 
     if (newProgress === 100) {
-      setFeedback('🎉 Course completed! Excellent job.');
+      setFeedback('🎉 Course completed! Excellent job. Taking you back to your courses...');
+      // Give the learner a moment to see the completion feedback, then return
+      // to the courses page.
+      setTimeout(() => {
+        router.push('/learning');
+        router.refresh();
+      }, 1500);
     } else {
       setFeedback(`Progress updated: ${newProgress}% completed.`);
+      setTimeout(() => setFeedback(null), 4000);
     }
-    setTimeout(() => setFeedback(null), 3000);
   };
 
   // Next / Previous navigation
@@ -1325,19 +1138,22 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
     }
   };
 
-  // Quiz submission
-  const handleSubmitQuiz = () => {
-    if (!activeLesson?.quizQuestions) return;
-    let correctCount = 0;
-    activeLesson.quizQuestions.forEach((q) => {
-      if (selectedAnswers[q.id] === q.correctIndex) correctCount += 1;
-    });
-    const score = Math.round((correctCount / activeLesson.quizQuestions.length) * 100);
-    setQuizScore(score);
-    setQuizSubmitted(true);
+  // Quiz submission — graded and recorded server-side
+  const handleSubmitQuiz = async () => {
+    if (!activeLesson?.quizQuestions || !activeLesson.id) return;
 
-    if (score >= 60 && !completedLessonIds.includes(activeLesson.id)) {
-      handleToggleLessonComplete(activeLesson.id);
+    try {
+      const result = await submitQuizAttempt(activeLesson.id, selectedAnswers);
+      setQuizScore(result.scorePercent);
+      setQuizPassingScore(result.passingScorePercent);
+      setQuizSubmitted(true);
+
+      if (result.isPassed && !completedLessonIds.includes(activeLesson.id)) {
+        handleToggleLessonComplete(activeLesson.id);
+      }
+    } catch (err: unknown) {
+      setFeedback(err instanceof Error ? err.message : 'Could not submit the assessment.');
+      setTimeout(() => setFeedback(null), 5000);
     }
   };
 
@@ -1346,6 +1162,39 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
     setQuizSubmitted(false);
     setQuizScore(null);
   };
+
+  // Loading skeleton while data hydrates
+  if (!isHydrated) {
+    return (
+      <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-50">
+        <LogoLoader label="Loading course" size="md" />
+      </div>
+    );
+  }
+
+  // Course does not exist
+  if (!foundCourse) {
+    return (
+      <div className="max-w-xl mx-auto py-16 px-4 text-center">
+        <div className="w-16 h-16 rounded-full bg-slate-100 border border-slate-200 text-slate-500 flex items-center justify-center mx-auto mb-4">
+          <BookOpen className="w-8 h-8 stroke-[1.8]" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 mb-2">Course Not Found</h2>
+        <p className="text-xs text-slate-500 leading-relaxed mb-6">
+          The requested course could not be located or may have been removed.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            href="/learning"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 px-4 py-2 rounded-lg shadow-sm transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Return to My Courses</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // Unauthorized screen (if student not assigned and not admin)
   if (!effectiveAssignment) {
@@ -1439,10 +1288,31 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
             </div>
             <div className="mt-2.5 h-2 w-full bg-slate-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-rose-600 to-rose-500 rounded-full transition-all duration-300"
+                className={`h-full rounded-full transition-all duration-300 ${
+                  progressPercent === 100
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                    : 'bg-gradient-to-r from-rose-600 to-rose-500'
+                }`}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
+
+            {progressPercent === 100 && (
+              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 animate-in fade-in duration-200">
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  Course Completed
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsCertificateModalOpen(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 rounded-md shadow-2xs transition-colors cursor-pointer"
+                >
+                  <Award className="w-3 h-3" />
+                  <span>Certificate</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1534,6 +1404,13 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
               </div>
             );
           })}
+          {modules.length === 0 && (
+            <div className="py-12 px-4 text-center">
+              <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-xs font-medium text-slate-500">No lessons published yet.</p>
+              <p className="text-[11px] text-slate-400 mt-1">Curriculum content is being updated.</p>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -1554,15 +1431,23 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
             </button>
 
             <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 border border-rose-200/60 px-2 py-0.5 rounded">
-                  Session {String(currentIndex + 1).padStart(2, '0')}
-                </span>
-                <span className="hidden sm:inline-flex w-1 h-1 rounded-full bg-slate-300" />
-                <span className="hidden sm:inline text-xs font-medium text-slate-500 truncate">{activeLesson?.moduleTitle}</span>
-              </div>
+              {activeLesson ? (
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 border border-rose-200/60 px-2 py-0.5 rounded">
+                    Session {String(currentIndex + 1).padStart(2, '0')}
+                  </span>
+                  <span className="hidden sm:inline-flex w-1 h-1 rounded-full bg-slate-300" />
+                  <span className="hidden sm:inline text-xs font-medium text-slate-500 truncate">{activeLesson.moduleTitle}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded">
+                    Course Preview
+                  </span>
+                </div>
+              )}
               <h1 className="text-sm sm:text-base font-bold text-slate-900 truncate leading-tight">
-                {activeLesson?.title}
+                {activeLesson?.title || course.title}
               </h1>
             </div>
           </div>
@@ -1572,6 +1457,19 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
               <span className="hidden md:flex items-center gap-1 text-xs text-slate-500 font-medium px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200/80">
                 <Clock className="w-3.5 h-3.5 text-slate-400" /> {activeLesson.durationMinutes} min
               </span>
+            )}
+
+            {/* Certificate Trigger (When Course Complete) */}
+            {progressPercent === 100 && (
+              <button
+                type="button"
+                onClick={() => setIsCertificateModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer animate-in fade-in"
+                title="View Certificate of Completion"
+              >
+                <Award className="w-4 h-4 text-emerald-600" />
+                <span className="hidden sm:inline">Certificate</span>
+              </button>
             )}
 
             {/* Single Source of Truth for Mark Complete */}
@@ -1593,16 +1491,6 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
                 <span className="hidden sm:inline">{completedLessonIds.includes(activeLesson.id) ? 'Completed' : 'Mark Complete'}</span>
               </button>
             )}
-
-            {/* Review Modal Trigger */}
-            <button
-              type="button"
-              onClick={() => setIsReviewModalOpen(true)}
-              className="p-2 rounded-xl text-slate-400 hover:text-amber-500 hover:bg-slate-50 border border-slate-200/80 transition-colors cursor-pointer"
-              title="Course Feedback & Review"
-            >
-              <Star className="w-4 h-4" />
-            </button>
           </div>
         </header>
 
@@ -1615,14 +1503,7 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
         )}
 
         <main
-          className={`flex-1 min-h-0 flex flex-col bg-slate-950 relative ${
-            activeLesson?.type === 'pdf' ||
-            activeLesson?.type === 'image' ||
-            activeLesson?.type === 'video' ||
-            (!activeLesson?.type && activeLesson?.fileUrl?.endsWith('.pdf'))
-              ? 'overflow-hidden p-0'
-              : 'overflow-y-auto p-4 sm:p-6 bg-[#F8FAFC]'
-          }`}
+          className="flex-1 w-full min-h-0 flex flex-col bg-slate-950 overflow-hidden relative"
         >
           {activeLesson ? (
             <>
@@ -1669,14 +1550,28 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
                   setSelectedAnswers={setSelectedAnswers}
                   quizSubmitted={quizSubmitted}
                   quizScore={quizScore}
+                  passingScore={quizPassingScore}
                   onSubmitQuiz={handleSubmitQuiz}
                   onResetQuiz={handleResetQuiz}
                 />
               )}
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
-              No lesson selected.
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-900 text-slate-300">
+              <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-slate-700/80 flex items-center justify-center mb-3 text-slate-400 shadow-inner">
+                <BookOpen className="w-7 h-7 text-indigo-400" />
+              </div>
+              <h2 className="text-base font-bold text-white mb-1">{course.title}</h2>
+              <p className="text-xs text-slate-400 max-w-sm mb-5 leading-relaxed">
+                This course curriculum is currently in development. Lessons will appear here once published by your course administrator.
+              </p>
+              <Link
+                href="/learning"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] transition-colors shadow-sm cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Back to Learning Catalog</span>
+              </Link>
             </div>
           )}
         </main>
@@ -1721,37 +1616,43 @@ export function CoursePlayer({ courseId }: CoursePlayerProps) {
                 type="button"
                 onClick={() => {
                   if (activeLesson) {
-                    handleToggleLessonComplete(activeLesson.id);
+                    if (!completedLessonIds.includes(activeLesson.id)) {
+                      handleToggleLessonComplete(activeLesson.id);
+                    } else {
+                      setIsCertificateModalOpen(true);
+                    }
                   }
                 }}
                 className={`inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white transition-all cursor-pointer shadow-sm ${
-                  activeLesson && completedLessonIds.includes(activeLesson.id)
+                  progressPercent === 100
                     ? 'bg-emerald-600 hover:bg-emerald-700'
                     : 'bg-rose-600 hover:bg-rose-700'
                 }`}
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>
-                  {activeLesson && completedLessonIds.includes(activeLesson.id)
-                    ? 'Course Completed'
-                    : 'Complete Course'}
-                </span>
+                {progressPercent === 100 ? (
+                  <>
+                    <Award className="w-4 h-4" />
+                    <span>View Certificate</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Complete Course</span>
+                  </>
+                )}
               </button>
             )}
           </div>
         </footer>
       </div>
 
-
-      {/* Review Modal */}
-      <CourseReviewModal
-        isOpen={isReviewModalOpen}
-        onClose={() => setIsReviewModalOpen(false)}
+      {/* Certificate Modal */}
+      <CourseCertificateModal
+        isOpen={isCertificateModalOpen}
+        onClose={() => setIsCertificateModalOpen(false)}
+        learnerName={activeLearner?.name || 'Learner'}
         courseTitle={course.title}
-        onSubmitReview={() => {
-          setFeedback('Thank you! Your course review has been submitted.');
-          setTimeout(() => setFeedback(null), 3000);
-        }}
+        verificationCode={certificateNumber}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { FileText, Clock, Star, CheckCircle2, GraduationCap, Code2, ShieldCheck, Users, Laptop, Shield } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, GraduationCap, Code2, ShieldCheck, Users, Laptop, Shield } from 'lucide-react';
 
 export interface CourseCardProps {
   id: string;
@@ -10,7 +10,6 @@ export interface CourseCardProps {
   progressPercent: number;
   totalLessons: number;
   durationMinutes?: number;
-  rating?: number;
   isCompleted?: boolean;
   isAdminAccess?: boolean;
 }
@@ -23,7 +22,6 @@ export function CourseCard({
   progressPercent,
   totalLessons,
   durationMinutes = 180,
-  rating = 5.0,
   isCompleted = false,
   isAdminAccess = false,
 }: CourseCardProps) {
@@ -50,7 +48,10 @@ export function CourseCard({
   };
 
   return (
-    <div className="bg-white border border-slate-200/90 rounded-lg overflow-hidden flex flex-col justify-between transition-all hover:border-slate-300 hover:shadow-xs">
+    <Link
+      href={`/learning/courses/${id}`}
+      className="group bg-white border border-slate-200/90 rounded-lg overflow-hidden flex flex-col justify-between transition-all hover:border-slate-300 hover:shadow-md cursor-pointer block text-left"
+    >
       {/* Thumbnail */}
       <div className={`relative aspect-[16/10] w-full ${thumbnailBg} overflow-hidden border-b border-slate-100 flex items-center justify-center`}>
         {thumbnailUrl ? (
@@ -58,12 +59,12 @@ export function CourseCard({
           <img
             src={thumbnailUrl}
             alt={title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center relative bg-gradient-to-br from-slate-50 to-slate-100/90">
             {/* Elegant soft center badge for placeholder */}
-            <div className="w-10 h-10 rounded-full bg-white shadow-2xs border border-slate-200/70 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-white shadow-2xs border border-slate-200/70 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
               {getSubjectIcon()}
             </div>
           </div>
@@ -79,10 +80,8 @@ export function CourseCard({
       <div className="p-3.5 flex-1 flex flex-col justify-between">
         <div>
           <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="font-semibold text-[15px] text-slate-800 line-clamp-2 leading-snug min-h-[40px] hover:text-[var(--brand-primary)] transition-colors flex-1">
-              <Link href={`/learning/courses/${id}`}>
-                {title}
-              </Link>
+            <h3 className="font-semibold text-[15px] text-slate-800 line-clamp-2 leading-snug min-h-[40px] group-hover:text-[var(--brand-primary)] transition-colors flex-1">
+              {title}
             </h3>
           </div>
 
@@ -126,13 +125,8 @@ export function CourseCard({
             <Clock className="w-3.5 h-3.5 text-slate-400 stroke-[1.8]" />
             {durationString}
           </span>
-
-          <span className="flex items-center gap-1 text-slate-700 font-medium">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            {rating.toFixed(1)}
-          </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

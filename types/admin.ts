@@ -59,7 +59,6 @@ export interface AdminCourse {
   description?: string;
   totalLessons: number;
   durationMinutes: number;
-  rating: number;
   isPublished: boolean;
   enrolledCount: number;
   thumbnailUrl: string | null;
@@ -86,5 +85,6 @@ export interface AdminStoreData {
   users: AdminUser[];
   courses: AdminCourse[];
   assignments: AdminAssignment[];
+  completedLessons?: Record<string, string[]>;
   currentUserId?: string;
 }

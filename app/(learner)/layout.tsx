@@ -1,7 +1,7 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
 import { Header } from '@/components/layout/header';
-import { LMSNotification } from '@/types/lms';
+import { StoreHydrationGate } from '@/components/ui/logo-loader';
 import { UserProfile } from '@/types/auth';
 import { getAuthContext } from '@/lib/auth/server';
 
@@ -13,21 +13,15 @@ export default async function LearnerLayout({
   const context = await getAuthContext();
   if (!context) redirect('/login?error=profile_missing');
 
-  const { data: userNotifications } = await context.supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', context.user.id)
-    .order('created_at', { ascending: false })
-    .limit(10);
-
   const userProfile = context.profile as UserProfile;
-  const notifications = (userNotifications || []) as LMSNotification[];
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900">
-      <Header user={userProfile} notifications={notifications} />
+    <div className="min-h-screen flex flex-col text-slate-900">
+      <Header user={userProfile} />
       <main className="flex-1 w-full px-6 sm:px-8 py-6">
-        {children}
+        <StoreHydrationGate>
+          {children}
+        </StoreHydrationGate>
       </main>
     </div>
   );

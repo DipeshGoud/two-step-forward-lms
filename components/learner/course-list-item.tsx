@@ -3,7 +3,6 @@ import Link from 'next/link';
 import {
   FileText,
   Clock,
-  Star,
   CheckCircle2,
   GraduationCap,
   Code2,
@@ -21,7 +20,6 @@ export interface CourseListItemProps {
   progressPercent: number;
   totalLessons: number;
   durationMinutes?: number;
-  rating?: number;
   isCompleted?: boolean;
   isAdminAccess?: boolean;
 }
@@ -33,7 +31,6 @@ export function CourseListItem({
   progressPercent,
   totalLessons,
   durationMinutes = 180,
-  rating = 5.0,
   isCompleted = false,
   isAdminAccess = false,
 }: CourseListItemProps) {
@@ -59,7 +56,10 @@ export function CourseListItem({
   };
 
   return (
-    <div className="group bg-white border border-slate-200/90 rounded-xl p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 transition-all hover:border-slate-300 hover:shadow-xs">
+    <Link
+      href={`/learning/courses/${id}`}
+      className="group bg-white border border-slate-200/90 rounded-xl p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 transition-all hover:border-slate-300 hover:shadow-xs cursor-pointer block"
+    >
       {/* Left: Prominent Thumbnail + Title & Meta */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 flex-1 min-w-0">
         {/* Prominent Sized Thumbnail */}
@@ -73,7 +73,7 @@ export function CourseListItem({
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center relative bg-gradient-to-br from-slate-50 to-slate-100/90">
-              <div className="w-11 h-11 rounded-full bg-white shadow-2xs border border-slate-200/70 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-full bg-white shadow-2xs border border-slate-200/70 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
                 {getSubjectIcon()}
               </div>
             </div>
@@ -87,10 +87,8 @@ export function CourseListItem({
 
         {/* Title and Metadata */}
         <div className="flex-1 min-w-0 py-0.5">
-          <h3 className="font-semibold text-[16px] sm:text-[17px] text-slate-800 hover:text-[var(--brand-primary)] transition-colors line-clamp-2 leading-snug">
-            <Link href={`/learning/courses/${id}`}>
-              {title}
-            </Link>
+          <h3 className="font-semibold text-[16px] sm:text-[17px] text-slate-800 group-hover:text-[var(--brand-primary)] transition-colors line-clamp-2 leading-snug">
+            {title}
           </h3>
 
           <div className="flex flex-wrap items-center gap-y-1.5 gap-x-4 mt-2.5 text-xs text-slate-500">
@@ -102,11 +100,6 @@ export function CourseListItem({
             <span className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-slate-400 stroke-[1.8]" />
               {durationString}
-            </span>
-
-            <span className="flex items-center gap-1 text-slate-700 font-medium">
-              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-              {rating.toFixed(1)}
             </span>
           </div>
         </div>
@@ -145,32 +138,29 @@ export function CourseListItem({
         {/* Action Button */}
         <div className="shrink-0">
           {isCompleted || progressPercent === 100 ? (
-            <Link
-              href={`/learning/courses/${id}`}
-              className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-md transition-colors cursor-pointer"
+            <div
+              className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 bg-slate-100 group-hover:bg-slate-200 px-3.5 py-2 rounded-md transition-colors"
             >
               <span>Review</span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-            </Link>
+            </div>
           ) : progressPercent > 0 ? (
-            <Link
-              href={`/learning/courses/${id}`}
-              className="inline-flex items-center gap-1 text-xs font-medium text-white bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] px-3.5 py-2 rounded-md transition-colors shadow-2xs cursor-pointer"
+            <div
+              className="inline-flex items-center gap-1 text-xs font-medium text-white bg-[var(--brand-primary)] group-hover:bg-[var(--brand-primary-hover)] px-3.5 py-2 rounded-md transition-colors shadow-2xs"
             >
               <span>Continue</span>
               <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
+            </div>
           ) : (
-            <Link
-              href={`/learning/courses/${id}`}
-              className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 px-3.5 py-2 rounded-md transition-colors cursor-pointer"
+            <div
+              className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 bg-white border border-slate-200 group-hover:bg-slate-50 px-3.5 py-2 rounded-md transition-colors"
             >
               <span>Start</span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-            </Link>
+            </div>
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

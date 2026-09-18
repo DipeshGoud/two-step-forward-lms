@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 const STORAGE_BUCKET = LMS_STORAGE_BUCKET;
 const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(['pdf', 'image', 'video', 'thumbnails']);
+const ALLOWED_TYPES = new Set(['pdf', 'image', 'video', 'thumbnails', 'avatars']);
 
 function formatBytes(bytes: number, decimals = 1): string {
   if (bytes === 0) return '0 Bytes';
@@ -62,13 +62,13 @@ function extractBucketPath(urlOrPath: string): string | null {
 }
 
 /**
- * POST /api/upload — Upload binary files (video, pdf, image, thumbnail) to Supabase Storage
+ * POST /api/upload — Upload binary files (video, pdf, image, thumbnail, avatar) to Supabase Storage
  */
 export async function POST(req: NextRequest) {
   try {
     const context = await getAuthContext();
-    if (!context || !isAdminRole(context.profile.role)) {
-      return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 });
+    if (!context) {
+      return NextResponse.json({ error: 'Authentication is required.' }, { status: 401 });
     }
 
     const formData = await req.formData();
@@ -85,8 +85,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unsupported upload type.' }, { status: 400 });
     }
 
-    if (file.size <= 0 || file.size > MAX_UPLOAD_BYTES) {
-      return NextResponse.json({ error: 'The file must be between 1 byte and 500 MB.' }, { status: 400 });
+    // Only administrators can upload course media; any authenticated user can upload their own avatar
+    if (type !== 'avatars' && !isAdminRole(context.profile.role)) {
+      return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 });
+    }
+
+    const maxBytes = type === 'avatars' ? 5 * 1024 * 1024 : MAX_UPLOAD_BYTES;
+    if (file.size <= 0 || file.size > maxBytes) {
+      return NextResponse.json({ error: `The file must be between 1 byte and ${formatBytes(maxBytes)}.` }, { status: 400 });
     }
 
     const expectedMimeTypes: Record<string, string[]> = {
@@ -94,6 +100,7 @@ export async function POST(req: NextRequest) {
       image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
       video: ['video/mp4', 'video/webm', 'video/quicktime'],
       thumbnails: ['image/jpeg', 'image/png', 'image/webp'],
+      avatars: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
     };
     if (!expectedMimeTypes[type]?.includes(file.type)) {
       return NextResponse.json({ error: `The selected file is not a valid ${type} file.` }, { status: 400 });
@@ -101,8 +108,7 @@ export async function POST(req: NextRequest) {
 
     const supabaseAdmin = createAdminClient();
 
-    // Ensure the private storage bucket exists. The migration creates it in
-    // production; this keeps local setup resilient when the bucket is absent.
+    // Ensure the private storage bucket exists.
     const { data: buckets } = await supabaseAdmin.storage.listBuckets();
     const bucketExists = buckets?.some((b) => b.name === STORAGE_BUCKET);
 
@@ -110,12 +116,24 @@ export async function POST(req: NextRequest) {
       await supabaseAdmin.storage.createBucket(STORAGE_BUCKET, {
         public: false,
         fileSizeLimit: 524288000, // 500MB
+        allowedMimeTypes: [
+          'application/pdf',
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+          'image/gif',
+          'video/mp4',
+          'video/webm',
+          'video/quicktime',
+        ],
       });
     }
 
     const cleanName = sanitizeFileName(file.name);
     const timestamp = Date.now();
-    const path = `${sanitizeSegment(type, 'general')}/${sanitizeSegment(courseId, 'general')}/${sanitizeSegment(lessonId, `lesson-${timestamp}`)}_${timestamp}_${cleanName}`;
+    const path = type === 'avatars'
+      ? `avatars/${context.user.id}_${timestamp}_${cleanName}`
+      : `${sanitizeSegment(type, 'general')}/${sanitizeSegment(courseId, 'general')}/${sanitizeSegment(lessonId, `lesson-${timestamp}`)}_${timestamp}_${cleanName}`;
 
     // Convert file to ArrayBuffer / Buffer for server upload
     const arrayBuffer = await file.arrayBuffer();

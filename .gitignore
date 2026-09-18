@@ -36,6 +36,15 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase
+supabase/.temp/
+.temp/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# db
+# dipeshgaud64_db_user
+# IcFGn7F4DQSYqXGv

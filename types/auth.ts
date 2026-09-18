@@ -32,6 +32,7 @@ export interface School {
   organization_id: string;
   name: string;
   code: string | null;
+  location: string;
   description: string | null;
   created_at: string;
   updated_at: string;

@@ -502,6 +502,7 @@ export default function CourseCurriculumBuilderModal({
         id: course?.id,
         title: trimmedTitle,
         description: description.trim(),
+        thumbnailUrl: course?.thumbnailUrl || undefined,
         isPublished,
         modules: sanitizedModules,
       });

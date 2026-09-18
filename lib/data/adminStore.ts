@@ -32,6 +32,7 @@ export const INITIAL_ADMIN_STORE: AdminStoreData = {
   users: [],
   courses: [],
   assignments: [],
+  completedLessons: {},
 };
 
 let memoryStore = INITIAL_ADMIN_STORE;
@@ -80,15 +81,51 @@ interface MutationResponse {
   result?: Record<string, unknown>;
 }
 
+// Heavy admin operations get the global branded loading overlay; frequent
+// background syncs (progress, quizzes) stay silent and use inline feedback.
+const MUTATION_LABELS: Record<string, string> = {
+  create_school: 'Creating school',
+  update_school: 'Saving school',
+  delete_school: 'Deleting school',
+  create_user: 'Creating user',
+  update_user: 'Saving user',
+  delete_user: 'Deleting user',
+  create_course: 'Creating course',
+  update_course: 'Saving course',
+  save_course_curriculum: 'Saving curriculum',
+  delete_course: 'Deleting course',
+  toggle_course_publish: 'Updating course',
+  create_assignment: 'Assigning course',
+  update_assignment_status: 'Updating assignment',
+  delete_assignment: 'Removing assignment',
+};
+
+function announceMutationStart(action: string): boolean {
+  const label = MUTATION_LABELS[action];
+  if (!label || typeof window === 'undefined') return false;
+  window.dispatchEvent(new CustomEvent('lms-mutation-start', { detail: { label } }));
+  return true;
+}
+
+function announceMutationEnd(announced: boolean): void {
+  if (!announced || typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('lms-mutation-end'));
+}
+
 async function mutate(action: string, input: Record<string, unknown> = {}): Promise<MutationResponse> {
-  const response = await fetch('/api/lms', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, input }),
-  });
-  const body = await parseResponse<MutationResponse>(response);
-  applyState(body.state);
-  return body;
+  const announced = announceMutationStart(action);
+  try {
+    const response = await fetch('/api/lms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, input }),
+    });
+    const body = await parseResponse<MutationResponse>(response);
+    applyState(body.state);
+    return body;
+  } finally {
+    announceMutationEnd(announced);
+  }
 }
 
 function findSchool(id: string, state: AdminStoreData): AdminSchool {
@@ -193,6 +230,7 @@ export const adminStore = {
     totalLessons: number;
     durationMinutes: number;
     isPublished: boolean;
+    thumbnailUrl?: string | null;
   }): Promise<AdminCourse> {
     const response = await mutate('create_course', payload);
     return findCourse(String(response.result?.id || ''), memoryStore);
@@ -206,6 +244,7 @@ export const adminStore = {
       totalLessons: payload.totalLessons ?? current.totalLessons,
       durationMinutes: payload.durationMinutes ?? current.durationMinutes,
       isPublished: payload.isPublished ?? current.isPublished,
+      thumbnailUrl: payload.thumbnailUrl ?? current.thumbnailUrl,
     });
     return findCourse(courseId, memoryStore);
   },
@@ -214,6 +253,7 @@ export const adminStore = {
     id?: string;
     title: string;
     description?: string;
+    thumbnailUrl?: string | null;
     isPublished: boolean;
     modules: CourseModule[];
   }): Promise<AdminCourse> {
@@ -253,8 +293,36 @@ export const adminStore = {
     await mutate('delete_assignment', { id: assignmentId });
   },
 
-  async updateLearnerCourseProgress(employeeId: string, courseId: string, progressPercent: number): Promise<void> {
-    await mutate('update_progress', { employeeId, courseId, progressPercent });
+  async updateLearnerCourseProgress(
+    employeeId: string,
+    courseId: string,
+    progressPercent: number,
+    lessonId?: string,
+    isCompleted?: boolean
+  ): Promise<{ certificateNumber?: string }> {
+    const response = await mutate('update_progress', { employeeId, courseId, progressPercent, lessonId, isCompleted });
+    const result = (response.result || {}) as { certificateNumber?: string };
+    return { certificateNumber: result.certificateNumber };
+  },
+
+  async submitQuizAttempt(
+    lessonId: string,
+    answers: Record<string, number>
+  ): Promise<{
+    scorePercent: number;
+    isPassed: boolean;
+    passingScorePercent: number;
+    attemptsUsed: number;
+    maxAttempts: number;
+  }> {
+    const response = await mutate('submit_quiz_attempt', { lessonId, answers });
+    return response.result as {
+      scorePercent: number;
+      isPassed: boolean;
+      passingScorePercent: number;
+      attemptsUsed: number;
+      maxAttempts: number;
+    };
   },
 
   async enrollLearnerInCourse(employeeId: string, courseId: string, schoolId?: string): Promise<AdminAssignment> {
@@ -267,6 +335,10 @@ export const adminStore = {
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
     });
     return findAssignment(String(response.result?.id || ''), memoryStore);
+  },
+
+  async updateMyProfile(payload: { name: string; avatarUrl?: string }): Promise<void> {
+    await mutate('update_my_profile', payload);
   },
 };
 
@@ -322,6 +394,8 @@ export function useAdminStore() {
     updateAssignmentStatus: adminStore.updateAssignmentStatus,
     deleteAssignment: adminStore.deleteAssignment,
     updateLearnerCourseProgress: adminStore.updateLearnerCourseProgress,
+    submitQuizAttempt: adminStore.submitQuizAttempt,
     enrollLearnerInCourse: adminStore.enrollLearnerInCourse,
+    updateMyProfile: adminStore.updateMyProfile,
   };
 }

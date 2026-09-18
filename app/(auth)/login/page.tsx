@@ -115,7 +115,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-[#F5F6F8]">
+    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12">
       <div className="w-full max-w-sm">
         {/* Brand Header */}
         <div className="flex flex-col items-center justify-center mb-6 text-center">

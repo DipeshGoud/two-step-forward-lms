@@ -218,7 +218,6 @@ function mapCourse(
     description: typeof course.description === 'string' ? course.description : '',
     totalLessons: mappedModules.reduce((total, module) => total + module.lessons.length, 0),
     durationMinutes: Number(course.estimated_duration_minutes || 0),
-    rating: Number(course.rating || 0),
     isPublished: course.is_published === true,
     enrolledCount: enrollmentCount,
     thumbnailUrl: typeof course.thumbnail_url === 'string' ? course.thumbnail_url : null,
@@ -377,11 +376,27 @@ export async function getBootstrap(context: AuthContext): Promise<AdminStoreData
   const coursesById = new Map(courses.map((course) => [course.id, course]));
   const assignments = visibleAssignments.map((assignment) => mapAssignment(assignment, usersById, coursesById, schoolsById));
 
+  // Retrieve granular lesson progress for current user
+  const { data: lessonProgressRows } = await database
+    .from('lesson_progress')
+    .select('course_id, lesson_id, is_completed')
+    .eq('user_id', context.user.id)
+    .eq('is_completed', true);
+
+  const completedLessons: Record<string, string[]> = {};
+  for (const row of (lessonProgressRows || []) as UnknownRecord[]) {
+    const cId = String(row.course_id);
+    const lId = String(row.lesson_id);
+    if (!completedLessons[cId]) completedLessons[cId] = [];
+    completedLessons[cId].push(lId);
+  }
+
   return {
     schools,
     users,
     courses,
     assignments,
+    completedLessons,
     currentUserId: context.user.id,
   };
 }
@@ -501,6 +516,9 @@ export async function performMutation(context: AuthContext, action: string, rawI
     const name = requiredString(input, 'name');
     const email = requiredString(input, 'email').toLowerCase();
     const role = validRole(input.role) ? input.role : 'learner';
+    if (role === 'super_admin' && context.profile.role !== 'super_admin') {
+      throw new LmsError('Only a super admin can grant the super admin role.', 403);
+    }
     const isActive = input.status !== 'inactive';
     const { data: existing, error: existingError } = await admin.from('profiles').select('email').eq('id', id).eq('organization_id', organizationId).single();
     if (existingError || !existing) throw new LmsError('User could not be found.', 404);
@@ -513,6 +531,45 @@ export async function performMutation(context: AuthContext, action: string, rawI
     const schoolNames = Array.isArray(input.schools) ? input.schools.filter((item): item is string => typeof item === 'string') : [];
     await replaceMemberships(admin, organizationId, id, schoolNames);
     return { id };
+  }
+
+  if (action === 'update_my_profile') {
+    const id = context.user.id;
+    const name = requiredString(input, 'name');
+    const avatarUrl = typeof input.avatarUrl === 'string' ? input.avatarUrl.trim() : undefined;
+
+    const updatePayload: {
+      full_name: string;
+      updated_at: string;
+      avatar_url?: string | null;
+    } = {
+      full_name: name,
+      updated_at: new Date().toISOString(),
+    };
+    if (avatarUrl !== undefined) {
+      updatePayload.avatar_url = avatarUrl || null;
+    }
+
+    const { error: profileError } = await admin
+      .from('profiles')
+      .update(updatePayload)
+      .eq('id', id);
+    if (profileError) throw new LmsError('Could not update profile.', 400);
+
+    try {
+      await admin.auth.admin.updateUserById(id, {
+        user_metadata: {
+          ...context.user.user_metadata,
+          full_name: name,
+          name,
+          ...(avatarUrl !== undefined ? { avatar_url: avatarUrl || null } : {}),
+        },
+      });
+    } catch (authErr) {
+      console.warn('Could not sync user metadata in auth:', authErr);
+    }
+
+    return { id, name, avatarUrl };
   }
 
   if (action === 'delete_user') {
@@ -528,12 +585,14 @@ export async function performMutation(context: AuthContext, action: string, rawI
 
   if (action === 'create_course') {
     requireContentAuthor(context);
+    const thumbnailUrl = optionalString(input, 'thumbnailUrl') || null;
     const { data, error } = await admin
       .from('courses')
       .insert({
         organization_id: organizationId,
         title: requiredString(input, 'title'),
         description: optionalString(input, 'description') || '',
+        thumbnail_url: thumbnailUrl,
         estimated_duration_minutes: boundedNumber(input, 'durationMinutes', 0, 0, 100000),
         is_published: input.isPublished === true,
         created_by: context.user.id,
@@ -547,14 +606,26 @@ export async function performMutation(context: AuthContext, action: string, rawI
   if (action === 'update_course') {
     requireContentAuthor(context);
     const id = requiredString(input, 'id');
+    const thumbnailUrl = optionalString(input, 'thumbnailUrl');
+    const updatePayload: {
+      title: string;
+      estimated_duration_minutes: number;
+      is_published: boolean;
+      updated_at: string;
+      thumbnail_url?: string | null;
+    } = {
+      title: requiredString(input, 'title'),
+      estimated_duration_minutes: boundedNumber(input, 'durationMinutes', 0, 0, 100000),
+      is_published: input.isPublished === true,
+      updated_at: new Date().toISOString(),
+    };
+    if (thumbnailUrl !== undefined) {
+      updatePayload.thumbnail_url = thumbnailUrl || null;
+    }
+
     const { data, error } = await admin
       .from('courses')
-      .update({
-        title: requiredString(input, 'title'),
-        estimated_duration_minutes: boundedNumber(input, 'durationMinutes', 0, 0, 100000),
-        is_published: input.isPublished === true,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', id)
       .eq('organization_id', organizationId)
       .select()
@@ -589,20 +660,43 @@ export async function performMutation(context: AuthContext, action: string, rawI
     let resolvedCourseId = courseId;
 
     if (resolvedCourseId) {
-      const { error } = await admin.from('courses').update({
+      const { data: existingCourse, error: courseError } = await admin
+        .from('courses')
+        .select('id')
+        .eq('id', resolvedCourseId)
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+      if (courseError || !existingCourse) throw new LmsError('Course could not be found.', 404);
+
+      const thumbnailUrl = optionalString(input, 'thumbnailUrl');
+      const updatePayload: {
+        title: string;
+        description: string;
+        is_published: boolean;
+        estimated_duration_minutes: number;
+        updated_at: string;
+        thumbnail_url?: string | null;
+      } = {
         title,
         description: optionalString(input, 'description') || '',
         is_published: input.isPublished === true,
         estimated_duration_minutes: modules.reduce((sum, module) => sum + module.lessons.reduce((lessonSum, lesson) => lessonSum + lesson.durationMinutes, 0), 0),
         updated_at: new Date().toISOString(),
-      }).eq('id', resolvedCourseId).eq('organization_id', organizationId);
+      };
+      if (thumbnailUrl !== undefined) {
+        updatePayload.thumbnail_url = thumbnailUrl || null;
+      }
+
+      const { error } = await admin.from('courses').update(updatePayload).eq('id', resolvedCourseId).eq('organization_id', organizationId);
       if (error) throw new LmsError('Could not update the course curriculum.', 400);
       await admin.from('course_modules').delete().eq('course_id', resolvedCourseId);
     } else {
+      const thumbnailUrl = optionalString(input, 'thumbnailUrl') || null;
       const { data, error } = await admin.from('courses').insert({
         organization_id: organizationId,
         title,
         description: optionalString(input, 'description') || '',
+        thumbnail_url: thumbnailUrl,
         is_published: input.isPublished === true,
         estimated_duration_minutes: modules.reduce((sum, module) => sum + module.lessons.reduce((lessonSum, lesson) => lessonSum + lesson.durationMinutes, 0), 0),
         created_by: context.user.id,
@@ -661,19 +755,49 @@ export async function performMutation(context: AuthContext, action: string, rawI
     requireAdmin(context);
     const userId = requiredString(input, 'employeeId');
     const courseId = requiredString(input, 'courseId');
-    const schoolId = requiredString(input, 'schoolId');
-    const dueDate = requiredString(input, 'dueDate');
+    const schoolId = optionalString(input, 'schoolId');
+    const dueDate = optionalString(input, 'dueDate');
+
+    const { data: member, error: memberError } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    if (memberError || !member) throw new LmsError('Employee could not be found in your organization.', 404);
+
+    const { data: course, error: courseError } = await admin
+      .from('courses')
+      .select('id, title')
+      .eq('id', courseId)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    if (courseError || !course) throw new LmsError('Course could not be found in your organization.', 404);
+
+    let schoolIdToUse: string | null = null;
+    if (schoolId) {
+      const { data: school, error: schoolError } = await admin
+        .from('schools')
+        .select('id')
+        .eq('id', schoolId)
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+      if (schoolError || !school) throw new LmsError('School could not be found in your organization.', 404);
+      schoolIdToUse = schoolId;
+    }
+
     const { data, error } = await admin.from('course_assignments').insert({
       organization_id: organizationId,
       user_id: userId,
       course_id: courseId,
-      school_id: schoolId,
+      school_id: schoolIdToUse,
       assigned_by: context.user.id,
       status: 'yet_to_start',
       progress_percent: 0,
-      due_date: dueDate,
+      due_date: dueDate || null,
     }).select('id').single();
     if (error || !data) throw new LmsError('Could not create the course assignment.', 400);
+
     return { id: String((data as UnknownRecord).id) };
   }
 
@@ -697,13 +821,255 @@ export async function performMutation(context: AuthContext, action: string, rawI
 
   if (action === 'update_progress') {
     const requestedUserId = optionalString(input, 'employeeId') || context.user.id;
-    if (!isAdminRole(context.profile.role) && requestedUserId !== context.user.id) throw new LmsError('You can only update your own progress.', 403);
+    if (!isAdminRole(context.profile.role) && requestedUserId !== context.user.id) {
+      throw new LmsError('You can only update your own progress.', 403);
+    }
     const courseId = requiredString(input, 'courseId');
     const progress = boundedNumber(input, 'progressPercent', 0, 0, 100);
     const status = progress >= 100 ? 'completed' : progress > 0 ? 'in_progress' : 'yet_to_start';
-    const { error } = await admin.from('course_assignments').update({ progress_percent: progress, status, completed_at: progress >= 100 ? new Date().toISOString() : null }).eq('organization_id', organizationId).eq('user_id', requestedUserId).eq('course_id', courseId);
-    if (error) throw new LmsError('Could not save learning progress.', 400);
-    return { courseId, userId: requestedUserId, progress };
+    const lessonId = optionalString(input, 'lessonId');
+    const isCompleted = input.isCompleted !== false;
+
+    // The course must belong to the caller's organization.
+    const { data: targetCourse } = await admin
+      .from('courses')
+      .select('id')
+      .eq('id', courseId)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    if (!targetCourse) throw new LmsError('Course could not be found in your organization.', 404);
+
+    // Check all existing assignments for this user and course
+    const { data: existingAssignments } = await admin
+      .from('course_assignments')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('user_id', requestedUserId)
+      .eq('course_id', courseId);
+
+    if (existingAssignments && existingAssignments.length > 0) {
+      const assignmentIds = existingAssignments.map((a) => a.id);
+      const { error: updateError } = await admin
+        .from('course_assignments')
+        .update({
+          progress_percent: progress,
+          status,
+          completed_at: progress >= 100 ? new Date().toISOString() : null,
+        })
+        .in('id', assignmentIds);
+      if (updateError) {
+        console.error('Could not update course progress:', updateError);
+        throw new LmsError(updateError.message || 'Could not save learning progress.', 400);
+      }
+    } else {
+      // Learners cannot self-enroll; they must be assigned the course first.
+      // An admin acting on a user's behalf may initialize the enrollment row.
+      if (!isAdminRole(context.profile.role)) {
+        throw new LmsError('You are not enrolled in this course.', 403);
+      }
+      const { data: member } = await admin
+        .from('profiles')
+        .select('id')
+        .eq('id', requestedUserId)
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+      if (!member) throw new LmsError('User could not be found in your organization.', 404);
+
+      // Find school membership for user if available
+      const { data: membership } = await admin
+        .from('school_memberships')
+        .select('school_id')
+        .eq('user_id', requestedUserId)
+        .maybeSingle();
+
+      const { error: insertError } = await admin
+        .from('course_assignments')
+        .insert({
+          organization_id: organizationId,
+          course_id: courseId,
+          user_id: requestedUserId,
+          school_id: membership?.school_id || null,
+          status,
+          progress_percent: progress,
+          assigned_at: new Date().toISOString(),
+          completed_at: progress >= 100 ? new Date().toISOString() : null,
+        });
+
+      if (insertError) {
+        // If concurrent insert created the row (unique conflict 23505), update it safely
+        if (insertError.code === '23505') {
+          await admin
+            .from('course_assignments')
+            .update({
+              progress_percent: progress,
+              status,
+              completed_at: progress >= 100 ? new Date().toISOString() : null,
+            })
+            .eq('organization_id', organizationId)
+            .eq('user_id', requestedUserId)
+            .eq('course_id', courseId);
+        } else {
+          console.error('Could not initialize enrollment progress:', insertError);
+          throw new LmsError(insertError.message || 'Could not initialize course enrollment progress.', 400);
+        }
+      }
+    }
+
+    // Save or toggle granular lesson progress
+    if (lessonId) {
+      if (isCompleted) {
+        await admin
+          .from('lesson_progress')
+          .upsert({
+            user_id: requestedUserId,
+            course_id: courseId,
+            lesson_id: lessonId,
+            is_completed: true,
+            completed_at: new Date().toISOString(),
+            last_accessed_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,lesson_id' });
+      } else {
+        await admin
+          .from('lesson_progress')
+          .delete()
+          .eq('user_id', requestedUserId)
+          .eq('lesson_id', lessonId);
+      }
+    }
+
+    // Issue a certificate the first time the course reaches 100%.
+    let certificateNumber: string | undefined;
+    if (progress >= 100) {
+      const { data: existingCertificate } = await admin
+        .from('certificates')
+        .select('certificate_number')
+        .eq('organization_id', organizationId)
+        .eq('course_id', courseId)
+        .eq('user_id', requestedUserId)
+        .maybeSingle();
+
+      if (existingCertificate) {
+        certificateNumber = existingCertificate.certificate_number;
+      } else {
+        certificateNumber = `TSF-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
+        const { error: certificateError } = await admin.from('certificates').insert({
+          organization_id: organizationId,
+          course_id: courseId,
+          user_id: requestedUserId,
+          certificate_number: certificateNumber,
+        });
+        if (certificateError) {
+          // A concurrent completion may have issued it already; surface it if so.
+          console.warn('Could not issue certificate:', certificateError);
+          certificateNumber = undefined;
+        }
+      }
+    }
+
+    return { courseId, userId: requestedUserId, progress, lessonId, isCompleted, certificateNumber };
+  }
+
+  if (action === 'submit_quiz_attempt') {
+    const lessonId = requiredString(input, 'lessonId');
+    const requestedUserId = optionalString(input, 'employeeId') || context.user.id;
+    if (!isAdminRole(context.profile.role) && requestedUserId !== context.user.id) {
+      throw new LmsError('You can only submit your own quiz attempts.', 403);
+    }
+
+    // Resolve the lesson's course and verify it belongs to the caller's organization.
+    const { data: lesson } = await admin
+      .from('lessons')
+      .select('id, module_id')
+      .eq('id', lessonId)
+      .maybeSingle();
+    if (!lesson) throw new LmsError('Lesson could not be found.', 404);
+
+    const { data: lessonModule } = await admin
+      .from('course_modules')
+      .select('id, course_id')
+      .eq('id', String(lesson.module_id))
+      .maybeSingle();
+    if (!lessonModule) throw new LmsError('Course module could not be found.', 404);
+
+    const { data: course } = await admin
+      .from('courses')
+      .select('id')
+      .eq('id', String(lessonModule.course_id))
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    if (!course) throw new LmsError('Course could not be found in your organization.', 404);
+
+    // Only enrolled learners (or admins previewing) may attempt the quiz.
+    if (!isAdminRole(context.profile.role)) {
+      const { count } = await admin
+        .from('course_assignments')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .eq('course_id', String(course.id))
+        .eq('user_id', requestedUserId);
+      if (!count) throw new LmsError('You are not enrolled in this course.', 403);
+    }
+
+    const { data: quiz } = await admin
+      .from('quizzes')
+      .select('id, passing_score_percent, max_attempts')
+      .eq('lesson_id', lessonId)
+      .maybeSingle();
+    if (!quiz) throw new LmsError('This lesson has no assessment configured.', 404);
+
+    const { data: questions, error: questionsError } = await admin
+      .from('quiz_questions')
+      .select('id, correct_answers')
+      .eq('quiz_id', String(quiz.id))
+      .order('order_index');
+    if (questionsError || !questions || questions.length === 0) {
+      throw new LmsError('This assessment has no questions configured.', 400);
+    }
+
+    const { count: attemptCount } = await admin
+      .from('quiz_attempts')
+      .select('id', { count: 'exact', head: true })
+      .eq('quiz_id', String(quiz.id))
+      .eq('user_id', requestedUserId);
+    if ((attemptCount || 0) >= Number(quiz.max_attempts)) {
+      throw new LmsError(`You have already used all ${quiz.max_attempts} attempts for this assessment.`, 429);
+    }
+
+    // Grade server-side so scores cannot be forged by the client.
+    const rawAnswers = asRecord(input.answers);
+    let correctCount = 0;
+    const gradedAnswers: Record<string, number> = {};
+    for (const question of questions as UnknownRecord[]) {
+      const questionId = String(question.id);
+      const rawValue = rawAnswers[questionId];
+      const selected = typeof rawValue === 'number' && Number.isInteger(rawValue) ? rawValue : -1;
+      gradedAnswers[questionId] = selected;
+      const correctAnswers = parseNumberArray(question.correct_answers);
+      if (correctAnswers.length === 1 && selected === correctAnswers[0]) correctCount += 1;
+    }
+
+    const scorePercent = Math.round((correctCount / questions.length) * 100);
+    const isPassed = scorePercent >= Number(quiz.passing_score_percent);
+
+    const { error: attemptError } = await admin.from('quiz_attempts').insert({
+      quiz_id: String(quiz.id),
+      user_id: requestedUserId,
+      score_percent: scorePercent,
+      is_passed: isPassed,
+      answers_submitted: gradedAnswers,
+      attempt_number: (attemptCount || 0) + 1,
+    });
+    if (attemptError) throw new LmsError('Could not record the quiz attempt.', 400);
+
+    return {
+      scorePercent,
+      isPassed,
+      passingScorePercent: Number(quiz.passing_score_percent),
+      attemptsUsed: (attemptCount || 0) + 1,
+      maxAttempts: Number(quiz.max_attempts),
+      correctCount,
+      totalQuestions: questions.length,
+    };
   }
 
   throw new LmsError('Unsupported LMS operation.', 400);

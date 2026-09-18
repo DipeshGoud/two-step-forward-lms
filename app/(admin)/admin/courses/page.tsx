@@ -6,7 +6,6 @@ import {
   Plus,
   FileText,
   Clock,
-  Star,
   CheckCircle,
   Eye,
   Search,
@@ -207,12 +206,6 @@ export default function AdminCoursesPage() {
                       <td className="py-3.5 px-4 sm:px-5">
                         <div className="font-semibold text-slate-900 text-[13px] hover:text-[var(--brand-primary)] transition-colors">
                           {course.title}
-                        </div>
-                        <div className="flex items-center gap-2 text-slate-400 mt-0.5 text-[11px]">
-                          <span className="flex items-center gap-1 text-amber-500 font-medium">
-                            <Star className="w-3 h-3 fill-amber-400" />
-                            {course.rating.toFixed(1)}
-                          </span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4">

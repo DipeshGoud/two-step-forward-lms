@@ -1,6 +1,7 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '@/types/auth';
 import BrandLogo from '@/components/ui/BrandLogo';
+import { UserDrawer } from '@/components/layout/user-drawer';
 
 interface AdminHeaderProps {
   user?: UserProfile | null;
@@ -21,6 +23,7 @@ interface AdminHeaderProps {
 
 export function AdminHeader({ user }: AdminHeaderProps) {
   const pathname = usePathname();
+  const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
 
   const navItems = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, exact: true },
@@ -81,15 +84,24 @@ export function AdminHeader({ user }: AdminHeaderProps) {
               <ArrowUpRight className="w-3.5 h-3.5 text-slate-500" />
             </Link>
 
-            {/* Profile Avatar */}
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-              <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-500">
-                <User className="w-4 h-4" />
+            {/* Profile Avatar Button */}
+            <button
+              type="button"
+              onClick={() => setIsUserDrawerOpen(true)}
+              className="flex items-center gap-2 pl-2 border-l border-slate-200 cursor-pointer hover:opacity-85 transition-opacity"
+              aria-label="User Profile"
+            >
+              <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-500 overflow-hidden">
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.full_name || 'Admin'} className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-4 h-4" />
+                )}
               </div>
               <span className="hidden sm:inline text-xs font-medium text-slate-700">
                 {user?.full_name || 'Admin'}
               </span>
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -116,6 +128,13 @@ export function AdminHeader({ user }: AdminHeaderProps) {
           );
         })}
       </div>
+
+      {/* User Profile Drawer */}
+      <UserDrawer
+        isOpen={isUserDrawerOpen}
+        onClose={() => setIsUserDrawerOpen(false)}
+        user={user}
+      />
     </header>
   );
 }

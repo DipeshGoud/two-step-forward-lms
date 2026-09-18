@@ -16,6 +16,7 @@ import { MetricBanner } from '@/components/learner/metric-banner';
 import { CourseCard } from '@/components/learner/course-card';
 import { CourseListItem } from '@/components/learner/course-list-item';
 import { useAdminStore, AdminCourse, isUserAdmin } from '@/lib/data/adminStore';
+import { LogoLoader } from '@/components/ui/logo-loader';
 
 export default function LearningPage() {
   const { store, isHydrated } = useAdminStore();
@@ -23,7 +24,7 @@ export default function LearningPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'yet_to_start' | 'in_progress' | 'completed'>('all');
-  const [sortBy, setSortBy] = useState<'recent' | 'title' | 'progress' | 'rating'>('recent');
+  const [sortBy, setSortBy] = useState<'recent' | 'title' | 'progress'>('recent');
 
   const activeUserId = store.currentUserId;
 
@@ -72,7 +73,6 @@ export default function LearningPage() {
           thumbnailUrl: course.thumbnailUrl,
           totalLessons: course.totalLessons,
           durationMinutes: course.durationMinutes,
-          rating: course.rating,
           isPublished: course.isPublished,
           enrolledCount: course.enrolledCount,
           progressPercent: foundAssignment ? foundAssignment.progress : 0,
@@ -91,7 +91,6 @@ export default function LearningPage() {
           thumbnailUrl: foundCourse?.thumbnailUrl || null,
           totalLessons: foundCourse?.totalLessons || 4,
           durationMinutes: foundCourse?.durationMinutes || 180,
-          rating: foundCourse?.rating || 5.0,
           isPublished: foundCourse ? foundCourse.isPublished : true,
           enrolledCount: foundCourse ? foundCourse.enrolledCount : 1,
           progressPercent: assignment.progress,
@@ -122,7 +121,6 @@ export default function LearningPage() {
     list.sort((a, b) => {
       if (sortBy === 'title') return a.title.localeCompare(b.title);
       if (sortBy === 'progress') return b.progressPercent - a.progressPercent;
-      if (sortBy === 'rating') return b.rating - a.rating;
       return 0; // 'recent'
     });
 
@@ -142,7 +140,11 @@ export default function LearningPage() {
     : learnerAssignments.filter((a) => a.status === 'completed' || a.progress === 100).length;
 
   if (!isHydrated) {
-    return <div className="py-16 text-center text-sm text-slate-500">Loading your learning space...</div>;
+    return (
+      <div className="py-16 flex justify-center">
+        <LogoLoader label="Loading your courses" size="md" />
+      </div>
+    );
   }
 
   if (!activeLearner) {
@@ -251,14 +253,13 @@ export default function LearningPage() {
             <select
               value={sortBy}
               onChange={(e) =>
-                setSortBy(e.target.value as 'recent' | 'title' | 'progress' | 'rating')
+                setSortBy(e.target.value as 'recent' | 'title' | 'progress')
               }
               className="bg-transparent text-xs text-slate-700 outline-none cursor-pointer"
             >
               <option value="recent">Recent</option>
               <option value="title">Title (A-Z)</option>
               <option value="progress">Progress %</option>
-              <option value="rating">Top Rated</option>
             </select>
           </div>
 
@@ -334,7 +335,6 @@ export default function LearningPage() {
               progressPercent={course.progressPercent}
               totalLessons={course.totalLessons}
               durationMinutes={course.durationMinutes}
-              rating={course.rating}
               isCompleted={course.isCompleted}
               isAdminAccess={course.isAdminAccess}
             />
@@ -352,7 +352,6 @@ export default function LearningPage() {
               progressPercent={course.progressPercent}
               totalLessons={course.totalLessons}
               durationMinutes={course.durationMinutes}
-              rating={course.rating}
               isCompleted={course.isCompleted}
               isAdminAccess={course.isAdminAccess}
             />

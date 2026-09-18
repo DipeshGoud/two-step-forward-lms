@@ -23,7 +23,7 @@ export function CourseCertificateModal({
     day: 'numeric',
     year: 'numeric',
   }),
-  verificationCode = 'TSF-CERT-849204',
+  verificationCode,
 }: CourseCertificateModalProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -130,7 +130,7 @@ export function CourseCertificateModal({
               <div className="text-right">
                 <div className="text-[10px] uppercase font-semibold text-slate-400">Credential ID</div>
                 <div className="font-mono text-[11px] font-semibold text-slate-700 mt-0.5">
-                  {verificationCode}
+                  {verificationCode || 'Pending issuance'}
                 </div>
               </div>
             </div>

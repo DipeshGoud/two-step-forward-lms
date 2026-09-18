@@ -19,11 +19,17 @@ export async function GET(request: Request) {
   try {
     const context = await getAuthContext();
     if (!context) return NextResponse.json({ error: 'Authentication is required.' }, { status: 401 });
-    if (!isAdminRole(context.profile.role)) return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 });
 
     const path = new URL(request.url).searchParams.get('path');
-    if (!path || path.includes('..') || !path.startsWith('lms-content/') && !/^(pdf|image|video|thumbnails)\//.test(path)) {
+    if (!path || path.includes('..') || !path.startsWith('lms-content/') && !/^(pdf|image|video|thumbnails|avatars)\//.test(path)) {
       throw new LmsError('Invalid content path.', 400);
+    }
+
+    // Course thumbnails and user avatars are accessible to all authenticated organization members
+    const normalizedPath = path.replace(/^lms-content\//, '');
+    const isPublicToOrg = normalizedPath.startsWith('thumbnails/') || normalizedPath.startsWith('avatars/');
+    if (!isPublicToOrg && !isAdminRole(context.profile.role)) {
+      return NextResponse.json({ error: 'Administrator access is required.' }, { status: 403 });
     }
 
     return await downloadObject({ path, contentType: contentTypeFromPath(path) });

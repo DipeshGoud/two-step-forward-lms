@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 
 // Server-only client using service_role key
 // NEVER import or use this file in Client Components
@@ -10,7 +11,7 @@ export function createAdminClient() {
     throw new Error('Supabase URL and Service Role Key must be set for admin client.');
   }
 
-  return createClient(supabaseUrl, serviceRoleKey, {
+  return createClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-[#F5F6F8]">
+    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12">
       <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="text-center mb-8">

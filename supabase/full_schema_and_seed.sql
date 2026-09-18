@@ -768,3 +768,62 @@ alter default privileges in schema public grant select, insert, update, delete o
 alter default privileges in schema public grant all privileges on tables to service_role;
 grant execute on function public.current_user_org_id() to authenticated, service_role;
 grant execute on function public.current_user_role() to authenticated, service_role;
+
+-- ============================================================================
+-- Storage: private lms-content bucket (final hardened state)
+-- Content is streamed through the authorized server API; authenticated staff
+-- manage objects, learners only read via the server.
+-- ============================================================================
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+    'lms-content',
+    'lms-content',
+    false,
+    524288000, -- 500 MB
+    array[
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'video/mp4',
+      'video/webm',
+      'video/quicktime'
+    ]::text[]
+)
+on conflict (id) do update set
+  public = false,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Public Access for LMS Content" on storage.objects;
+drop policy if exists "Allow Public Upload to LMS Content" on storage.objects;
+drop policy if exists "Allow Public Update to LMS Content" on storage.objects;
+drop policy if exists "Allow Public Delete to LMS Content" on storage.objects;
+drop policy if exists "Allow Upload to LMS Content" on storage.objects;
+drop policy if exists "Allow Update to LMS Content" on storage.objects;
+drop policy if exists "Allow Delete to LMS Content" on storage.objects;
+
+create policy "Authenticated LMS Content Upload"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'lms-content'
+    and public.current_user_role() in ('super_admin', 'org_admin', 'manager')
+  );
+
+create policy "Authenticated LMS Content Update"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'lms-content'
+    and public.current_user_role() in ('super_admin', 'org_admin', 'manager')
+  )
+  with check (
+    bucket_id = 'lms-content'
+    and public.current_user_role() in ('super_admin', 'org_admin', 'manager')
+  );
+
+create policy "Authenticated LMS Content Delete"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'lms-content'
+    and public.current_user_role() in ('super_admin', 'org_admin', 'manager')
+  );

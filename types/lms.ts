@@ -1,9 +1,8 @@
 import { UserProfile, School } from './auth';
 
 export type AssignmentStatus = 'yet_to_start' | 'in_progress' | 'completed';
-export type LessonContentType = 'video' | 'pdf' | 'image' | 'text' | 'quiz';
+export type LessonContentType = 'video' | 'pdf' | 'image' | 'text' | 'reading' | 'quiz';
 export type QuestionType = 'single_choice' | 'multiple_choice' | 'true_false';
-export type NotificationType = 'course_assigned' | 'lesson_published' | 'quiz_result' | 'system';
 
 export interface Course {
   id: string;
@@ -13,7 +12,6 @@ export interface Course {
   thumbnail_url: string | null;
   is_published: boolean;
   estimated_duration_minutes: number;
-  rating: number;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -72,18 +70,13 @@ export interface LessonProgress {
   last_accessed_at: string;
 }
 
-export interface QuizQuestionOption {
-  id: string;
-  text: string;
-}
-
 export interface QuizQuestion {
   id: string;
   quiz_id: string;
   prompt: string;
   question_type: QuestionType;
-  options: QuizQuestionOption[];
-  correct_answers: string[];
+  options: string[];
+  correct_answers: number[];
   order_index: number;
 }
 
@@ -102,7 +95,7 @@ export interface QuizAttempt {
   user_id: string;
   score_percent: number;
   is_passed: boolean;
-  answers_submitted: Record<string, string[]>;
+  answers_submitted: Record<string, number>;
   attempt_number: number;
   completed_at: string;
 }
@@ -142,16 +135,4 @@ export interface Space {
   description: string | null;
   created_at: string;
   school?: School | null;
-}
-
-export interface LMSNotification {
-  id: string;
-  organization_id: string;
-  user_id: string;
-  title: string;
-  message: string;
-  type: NotificationType;
-  link_url: string | null;
-  is_read: boolean;
-  created_at: string;
 }
