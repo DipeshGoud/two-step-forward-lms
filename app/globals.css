@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --brand-primary: #E11D48;
+  --brand-primary-hover: #BE123C;
+  --brand-primary-active: #9F1239;
+  --brand-accent: #2563EB;
+  --brand-bg: #F5F6F8;
+  --brand-surface: #FFFFFF;
+  --brand-surface-muted: #F1F5F9;
+  --brand-border: #E2E8F0;
+  --brand-text: #1E293B;
+  --brand-text-muted: #64748B;
+}
+
+html {
+  color-scheme: light;
+}
+
+/* Light enterprise theme by default */
+body {
+  background-color: #F5F6F8;
+  color: #1E293B;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Clean minimal scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
